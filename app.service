@@ -1,0 +1,14 @@
+[Unit]
+Description=Eden Food Flask app
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/eden_food
+EnvironmentFile=/var/www/eden_food/.env
+ExecStart=/usr/bin/gunicorn -w 3 -b 127.0.0.1:8000 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

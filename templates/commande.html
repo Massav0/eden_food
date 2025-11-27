@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Commandes en cours — Eden Food{% endblock %}
+
+{% block content %}
+<div class="commande-page">
+
+  <div class="commande-card">
+    <img 
+      src="{{ session.get('plat_img')}}" 
+      alt="{{ session.get('plat_name')}}"
+      class="plat-image"
+      style="max-width:240px; width:100%; height:auto;"
+    >
+    <div class="plat-info">
+      <h3>{{ session.get('plat_name', 'Plat non sélectionné') }}</h3>
+      <p class="price">{{ session.get('plat_price', 0) }} FCFA</p>
+    </div>
+  </div>
+
+  <form action="{{url_for('orders')}}" method="POST" class="commande-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="plat">Plat sélectionné</label>
+    <input type="text" id="plat" name="plat" value="{{ session.get('plat_name') }}" readonly>
+
+    <!-- on envoie aussi l'image_url (hidden) si besoin côté serveur -->
+    <input type="hidden" name="plat_image_url" value="{{ session.get('plat_img') }}">
+    <input type="hidden" name="plat_id" value="{{ session.get('plat_id') }}">
+    <input type="hidden" name="plat_price" value="{{ session.get('plat_price') }}">
+
+    <label for="nom_client">Votre nom</label>
+    <input type="text" id="nom_client" name="nom_client" value="{{session.get('username')}}" readonly>
+
+    <label for="tel">Téléphone</label>
+    <input type="tel" id="tel" name="tel" required>
+
+    <label for="adresse">Adresse de livraison</label>
+    <textarea id="adresse" name="adresse" rows="2" required></textarea>
+
+    <label for="quantite">Quantité</label>
+    <input type="number" id="quantite" name="quantite" min="1" value="1" required>
+
+    <label for="note">Laisser une note (instructions, allergies...)</label>
+    <textarea id="note" name="note" rows="4" placeholder="Ex : pas d'oignon, sauce à part..."></textarea>
+
+    <!-- autres options possibles (ex : cuisson, accompagnement) -->
+    <label for="accompagnement">Accompagnement (optionnel)</label>
+    <input type="text" id="accompagnement" name="accompagnement" placeholder="Ex : riz, frites...">
+
+    <button type="submit">Valider la commande</button>
+  </form>
+
+</div>
+{% endblock %}

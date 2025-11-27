@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Commandes — Eden Food Admin{% endblock %}
+
+{% block content %}
+<div class="container admin-container">
+
+    <!-- En-tête de la page -->
+    <div class="admin-header">
+        <h1>Tableau de Bord des Commandes</h1>
+        <p class="subtitle">Gérez et suivez toutes les commandes en temps réel</p>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="stats-grid">
+        <div class="stat-card stat-total">
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.total }}</span>
+                <span class="stat-label">Total Commandes</span>
+            </div>
+        </div>
+
+        <div class="stat-card stat-pending">
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.en_attente }}</span>
+                <span class="stat-label">En Attente</span>
+            </div>
+        </div>
+
+        <div class="stat-card stat-delivered">
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.confirmees }}</span>
+                <span class="stat-label">Confirmées</span>
+            </div>
+        </div>
+
+        <div class="stat-card stat-preparing">
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.en_preparation }}</span>
+                <span class="stat-label">En Préparation</span>
+            </div>
+        </div>
+
+        <div class="stat-card stat-delivering">
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.en_livraison }}</span>
+                <span class="stat-label">En Livraison</span>
+            </div>
+        </div>
+
+        <div class="stat-card stat-delivered">
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.livrees }}</span>
+                <span class="stat-label">Livrées</span>
+            </div>
+        </div>
+
+        <div class="stat-card stat-revenue">
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.revenu_total }}</span>
+                <span class="stat-label">Revenu (FCFA)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+<!-- === BLOCK 2 : Filtre Statut === -->
+<form id="filterStatusForm" class="filter-section">
+    <label for="status">Statut</label>
+
+    <select id="status" name="status">
+        <option value="">Tous</option>
+        <option value="en attente de paiement">En attente</option>
+        <option value="Confirmée">Confirmée</option>
+        <option value="En préparation">En préparation</option>
+        <option value="En livraison">En livraison</option>
+        <option value="Livrée">Livrée</option>
+        <option value="Annulée">Annulée</option>
+    </select>
+
+    <button type="submit">Appliquer</button>
+</form>
+
+<div id="ordersContainer"></div>
+
+
+<!-- === BLOCK 3 : Liste des commandes (sans JS) === -->
+<div class="orders-section">
+
+    {% if orders %}
+        {% for order in orders %}
+        <article class="admin-order-card" data-order-id="{{ order.id }}">
+
+            <!-- Sélection multiple (optionnel) -->
+            <div class="order-select">
+                <input type="checkbox" name="selected_ids" value="{{ order.id }}">
+            </div>
+
+            <div class="order-main">
+
+                <!-- En-tête -->
+                <div class="order-header-admin">
+                    <div class="order-ref-section">
+                        <span class="ref-label">Réf.</span>
+                        <span class="ref-value">{{ order.plat_name }}</span>
+                        <span class="order-date">
+                            {% if order.date %}
+                                {{ order.date }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Contenu principal -->
+                <div class="order-content-admin">
+
+                    <div class="order-image-small">
+                        <img src="{{ order.image_url or url_for('static', filename='images/default.jpg') }}"
+                             alt="{{ order.plat_name }}">
+                    </div>
+
+                    <div class="order-details-admin">
+                        <h4>{{ order.plat_name }}</h4>
+                        <div class="order-meta">
+                            <span>{{ order.client_name }}</span>
+                            <span>{{ order.tel or 'N/A' }}</span>
+                            <span>Qté : {{ order.quantite }}</span>
+                        </div>
+                    </div>
+
+                    <div class="order-price-section">
+                        <span class="price-label">Total</span>
+                        <span class="price-value">{{ order.price * order.quantite }} FCFA</span>
+                    </div>
+
+                </div>
+
+                <!-- Adresse -->
+                <div class="order-address">
+                    {{ order.addresse }}
+                </div>
+
+                <!-- Note client -->
+                {% if order.note %}
+                <div class="order-note">{{ order.note }}</div>
+                {% endif %}
+
+                <!-- Actions -->
+                <div class="order-actions-admin">
+
+                    
+                    <a href=""
+                       target="_blank"
+                       class="btn-action btn-print">Imprimer</a>
+
+                    <!-- Modifier statut : bouton + formulaire -->
+                    <button type="button"
+                            class="btn-action btn-status"
+                            onclick="this.nextElementSibling.style.display='block'">
+                        Modifier statut
+                    </button>
+
+                    <form method="post"
+                          action="{{ url_for('update_order') }}"
+                          style="display:none; margin-top:5px;">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <select name="status">
+                            <option value="En attente"     {% if order.statut=='En attente' %}selected{% endif %}>En attente</option>
+                            <option value="Confirmée"      {% if order.statut=='Confirmée' %}selected{% endif %}>Confirmée</option>
+                            <option value="En préparation" {% if order.statut=='En préparation' %}selected{% endif %}>En préparation</option>
+                            <option value="En livraison"   {% if order.statut=='En livraison' %}selected{% endif %}>En livraison</option>
+                            <option value="Livrée"         {% if order.statut=='Livrée' %}selected{% endif %}>Livrée</option>
+                            <option value="Annulée"        {% if order.statut=='Annulée' %}selected{% endif %}>Annulée</option>
+                        </select>
+                        <input type="hidden" value="{{order.id}}"  name="order_id">
+
+                        <button type="submit" class="btn-action btn-save">Enregistrer</button>
+                    </form>
+
+                    <!-- Supprimer -->
+                    <form method="post"
+                          action="{{ url_for('delete_order', order_id=order.id) }}"
+                          style="display:inline;"
+                          onsubmit="return confirm('Supprimer cette commande ?')">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">s
+                        <button type="submit" class="btn-action btn-delete">Supprimer</button>
+                    </form>
+
+                </div>
+
+            </div>
+
+        </article>
+        {% endfor %}
+
+    {% else %}
+
+        <div class="empty-state">
+            <h3>Aucune commande trouvée</h3>
+            <p>Essayez de changer les filtres.</p>
+        </div>
+
+    {% endif %}
+
+    <!-- Pagination optionnelle -->
+    {% if pagination %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('admin_orders', page=pagination.prev_num, **request.args.to_dict()) }}">Précédent</a>
+        {% endif %}
+        Page {{ pagination.page }} / {{ pagination.pages }}
+        {% if pagination.has_next %}
+        <a href="{{ url_for('admin_orders', page=pagination.next_num, **request.args.to_dict()) }}">Suivant</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+
+
+{% endblock %}

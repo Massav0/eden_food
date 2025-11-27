@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Mes Commandes — Eden Food{% endblock %}
+
+{% block content %}
+<div class="container suivi-container">
+    <!-- En-tête de la page -->
+    <div class="suivi-header">
+        <h1>Mes Commandes en Cours</h1>
+        <p class="subtitle">Hello {{ session.get('username', 'Client').capitalize() }}, suivez l'état de vos commandes en temps réel</p>
+    </div>
+
+    <!-- Zone des commandes -->
+    <div class="orders-section">
+        <div id="orders-list" class="orders-grid">
+            {% if orders %}
+                <!-- Affichage des commandes -->
+                {% for order in orders %}
+                <article class="order-card">
+                    <div class="order-header">
+                        <div class="order-ref">
+                            <span class="ref-label">Référence</span>
+                        </div>
+                        <span class="order-status status-{{ order.status.lower() }}">{{ order.statut }}</span>
+                    </div>
+                    
+                    <div class="order-content">
+                        <div class="order-image">
+                            <img src="{{ order.image_url or '/static/images/default.jpg' }}" alt="{{ order.plat_name }}">
+                        </div>
+                        <div class="order-details">
+                            <h4>{{ order.plat_name }}</h4>
+                            <p class="order-quantity">Quantité : {{ order.quantite }}</p>
+                            <p class="order-price">{{ order.price }} FCFA</p>
+                        </div>
+                    </div>
+                    
+                    <div class="order-info">
+                        <p><strong>Adresse :</strong> {{ order.addresse }}</p>
+                        <p><strong>Date :</strong> {{ order.date if order.date is not string else order.date }}</p>
+                        {% if order.note %}
+                        <p><strong>Note :</strong> {{ order.note }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="order-timeline">
+                        <div class="timeline-step {% if order.status == 'en attente de paiement' %}active{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <span>Attente Paiement</span>
+                        </div>
+                        <div class="timeline-step {% if order.status == 'Confirmée' %}active{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <span>Confirmée</span>
+                        </div>
+                        <div class="timeline-step {% if order.status == 'En Préparation' %}active{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <span>En préparation</span>
+                        </div>
+                        <div class="timeline-step {% if order.status == 'En Livraison' %}active{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <span>En livraison</span>
+                        </div>
+                        <div class="timeline-step {% if order.status == 'Livrée' %}active{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <span>Livrée</span>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            {% else %}
+                <!-- État vide -->
+                <div class="empty-orders">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                    <h3>Aucune commande en cours</h3>
+                    <p>Vous n'avez pas encore passé de commande</p>
+                    <a href="{{ url_for('menu') }}" class="btn-primary">Commander maintenant</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="quick-actions">
+        <h3>Actions Rapides</h3>
+        <div class="actions-grid">
+            <a href="{{ url_for('menu') }}" class="action-card">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <h4>Nouvelle Commande</h4>
+                <p>Découvrez notre menu</p>
+            </a>
+            
+            <a href="{{ url_for('menu') }}" class="action-card">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                <h4>Voir le Menu</h4>
+                <p>Parcourir nos plats</p>
+            </a>
+            
+            <a href="{{ url_for('contact') }}" class="action-card">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <h4>Contactez-Nous</h4>
+                <p>Besoin d'aide ?</p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
