@@ -148,42 +148,46 @@ def login():
 
 @app.route("/follow")
 def follow():
-    conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-    cursor=conn.cursor()
-    try:
-        cursor.execute("""
-    SELECT * FROM commande WHERE nom_client = %s
-    """, ( session.get('username'),))
-        
-        conn.commit()
-    except psycopg2.IntegrityError as e:
-        conn.rollback()
-        print
-        print(e)
+    if session.get('username'):
+        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+        cursor=conn.cursor()
+        try:
+            cursor.execute("""
+        SELECT * FROM commande WHERE nom_client = %s
+        """, ( session.get('username'),))
+            
+            conn.commit()
+        except psycopg2.IntegrityError as e:
+            conn.rollback()
+            print
+            print(e)
 
+        else:
+            print("opération réussie!")
+
+        orders_list=cursor.fetchall()
+        orders = []
+        for order in orders_list:
+                orders.append({
+                    'id': order[1],
+                    'plat_name': order[2],
+                    'client_name': order[4],
+                    'quantite': order[7],
+                    'price': order[11],
+                    'addresse': order[6],
+                    'tel': order[5],
+                    'date': order[0],
+                    'note': order[8],
+                    'accompagnement': order[9],
+                    'status': order[10],
+                    'image_url': order[3],
+                })
+            
+
+        print(orders)
+    
     else:
-        print("opération réussie!")
-
-    orders_list=cursor.fetchall()
-    orders = []
-    for order in orders_list:
-            orders.append({
-                'id': order[1],
-                'plat_name': order[2],
-                'client_name': order[4],
-                'quantite': order[7],
-                'price': order[11],
-                'addresse': order[6],
-                'tel': order[5],
-                'date': order[0],
-                'note': order[8],
-                'accompagnement': order[9],
-                'status': order[10],
-                'image_url': order[3],
-            })
-        
-
-    print(orders)
+        return redirect(url_for('login'))
 
     return render_template('suivi.html', orders=orders)
 
@@ -193,38 +197,41 @@ def follow():
 
 @app.route('/menu')
 def menu():
-    items = []
-    try :
-        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-        cursor=conn.cursor()
-        cursor.execute('SELECT * FROM plats')
-    except psycopg2.IntegrityError as e:
-        print(e)
-        cursor.close()
-        conn.rollback()
+    if session.get('username'):
+        items = []
+        try :
+            conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+            cursor=conn.cursor()
+            cursor.execute('SELECT * FROM plats')
+        except psycopg2.IntegrityError as e:
+            print(e)
+            cursor.close()
+            conn.rollback()
+        else:
+            print('opération réussie')
+        
+        rows=cursor.fetchall()
+        print(rows)
+        for row in rows:
+            print (row)
+            items.append({
+                'id': row[0],
+                'name':row[1],
+                'price': row[2],
+                'description': row[3],
+                'image_url':row[4],
+                'category': row[5],
+                'tags': row[6]
+            })
+
+        print (items)
+
+
+
+        return render_template ('menu.html', items=items)
+
     else:
-        print('opération réussie')
-    
-    rows=cursor.fetchall()
-    print(rows)
-    for row in rows:
-        print (row)
-        items.append({
-            'id': row[0],
-            'name':row[1],
-            'price': row[2],
-            'description': row[3],
-            'image_url':row[4],
-            'category': row[5],
-            'tags': row[6]
-        })
-
-    print (items)
-
-
-
-    return render_template ('menu.html', items=items)
-    
+        return redirect(url_for('login'))   
     
 
 @app.route('/add_session', methods=['POST'])
@@ -251,71 +258,75 @@ def add_to_session():
 
 @app.route("/orders", methods=['POST','GET'])
 def orders():
-    if request.method=='POST':
+    if session.get('username'):
 
-        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-        cursor=conn.cursor()
+        if request.method=='POST':
 
-        nom_plat=request.form.get('plat')
-        id_plat=request.form.get('plat_id')
-        url_plat=request.form.get('plat_image_url')
-        nom_client=request.form.get('nom_client')
-        tel_client=request.form.get('tel')
-        adress_client=request.form.get('adresse')
-        quantite=request.form.get('quantite')
-        accompagnement=request.form.get('accompagnement')
-        note_plat=request.form.get('note')
-        prix_plat=request.form.get('plat_price')
+            conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+            cursor=conn.cursor()
+
+            nom_plat=request.form.get('plat')
+            id_plat=request.form.get('plat_id')
+            url_plat=request.form.get('plat_image_url')
+            nom_client=request.form.get('nom_client')
+            tel_client=request.form.get('tel')
+            adress_client=request.form.get('adresse')
+            quantite=request.form.get('quantite')
+            accompagnement=request.form.get('accompagnement')
+            note_plat=request.form.get('note')
+            prix_plat=request.form.get('plat_price')
 
 
-        try:
-            cursor.execute("""
-            INSERT INTO commande (
-                plat_id,
-                plat_name,
-                plat_image_url,
-                nom_client,
-                tel,
-                adresse,
-                quantite,
-                note,
-                accompagnement,
-                statut,
-                prix
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id, created_at;
-            """, (
-                id_plat,                                 
-                nom_plat,                     
-                url_plat,      
-                nom_client,                       
-                tel_client,                     
-                adress_client,                 
-                quantite,                                   
-                note_plat,                    
-                accompagnement,                            
-                "en attente de paiement",                        
-                prix_plat                            
-            ))
+            try:
+                cursor.execute("""
+                INSERT INTO commande (
+                    plat_id,
+                    plat_name,
+                    plat_image_url,
+                    nom_client,
+                    tel,
+                    adresse,
+                    quantite,
+                    note,
+                    accompagnement,
+                    statut,
+                    prix
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, created_at;
+                """, (
+                    id_plat,                                 
+                    nom_plat,                     
+                    url_plat,      
+                    nom_client,                       
+                    tel_client,                     
+                    adress_client,                 
+                    quantite,                                   
+                    note_plat,                    
+                    accompagnement,                            
+                    "en attente de paiement",                        
+                    prix_plat                            
+                ))
 
-            conn.commit()
-            return redirect(url_for('menu'))
-        
-        except psycopg2.IntegrityError as e:
-            print('erreur: ', e)
-            conn.rollback()
-        else:
-            print('insertion réussie')
+                conn.commit()
+                return redirect(url_for('menu'))
+            
+            except psycopg2.IntegrityError as e:
+                print('erreur: ', e)
+                conn.rollback()
+            else:
+                print('insertion réussie')
+                
+
+
             
 
+        else:
 
-        
+
+            return render_template('commande.html')
 
     else:
-
-
-        return render_template('commande.html')
-
+        return redirect(url_for('login'))
 
 
 @app.route("/logout")
@@ -326,91 +337,100 @@ def logout():
 
 @app.route("/contact")
 def contact():
-    return render_template('contact.html')
+    if session.get('username'):
+    
+        return render_template('contact.html')
+    else:
+        return redirect(url_for('login'))
 
 
 @app.route("/admin_home", methods=['POST', 'GET'])
 def admin_home():
-
-    try :
-        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-        cursor=conn.cursor()
-        cursor.execute('SELECT COUNT(*) FROM commande')
-        total = cursor.fetchone()
-
-        cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("en attente de paiement",))
-        en_attente = cursor.fetchone()
-
-        cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("Confirmée",))
-        confirme = cursor.fetchone()
-
-        cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En préparation",))
-        en_preparation = cursor.fetchone()
-
-        cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En livraison",))
-        en_livraison = cursor.fetchone()
-
-        cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("Livrée",))
-        livre = cursor.fetchone()
-
-        cursor.execute('SELECT SUM(prix) FROM commande WHERE statut=%s', ("en attente de paiement",))
-        chiffre = cursor.fetchone()
-
-    except psycopg2.IntegrityError as e:
-        print(e)
-        cursor.close()
-        conn.rollback()
-    else:
-        print('opération réussie')
     
-    
-    stats={}
-    stats['total']=total[0]
-    stats['en_attente']=en_attente[0]
-    stats['confirmees']=confirme[0]
-    stats['en_preparation']=en_preparation[0]
-    stats['en_livraison']=en_livraison[0]
-    stats['livrees']=livre[0]
-    stats['revenu_total']=chiffre[0]
-    print(stats)
+    if session.get('username') and session.get('is_admin')==True:
 
+        try :
+            conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+            cursor=conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM commande')
+            total = cursor.fetchone()
 
-    try:
-        cursor.execute("""
-    SELECT * FROM commande 
-    """)
+            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("en attente de paiement",))
+            en_attente = cursor.fetchone()
+
+            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("Confirmée",))
+            confirme = cursor.fetchone()
+
+            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En préparation",))
+            en_preparation = cursor.fetchone()
+
+            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En livraison",))
+            en_livraison = cursor.fetchone()
+
+            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("Livrée",))
+            livre = cursor.fetchone()
+
+            cursor.execute('SELECT SUM(prix) FROM commande WHERE statut=%s', ("en attente de paiement",))
+            chiffre = cursor.fetchone()
+
+        except psycopg2.IntegrityError as e:
+            print(e)
+            cursor.close()
+            conn.rollback()
+        else:
+            print('opération réussie')
         
-        conn.commit()
-    except psycopg2.IntegrityError as e:
-        conn.rollback()
-        print
-        print(e)
-
-    else:
-        print("opération réussie!")
-
-    orders_list=cursor.fetchall()
-    orders = []
-    for order in orders_list:
-            orders.append({
-                'id': order[1],
-                'plat_name': order[2],
-                'client_name': order[4],
-                'quantite': order[7],
-                'price': order[11],
-                'addresse': order[6],
-                'tel': order[5],
-                'date': 'Indéfinie',
-                'note': order[8],
-                'accompagnement': order[9],
-                'status': order[10],
-                'image_url': order[3],
-            })
         
+        stats={}
+        stats['total']=total[0]
+        stats['en_attente']=en_attente[0]
+        stats['confirmees']=confirme[0]
+        stats['en_preparation']=en_preparation[0]
+        stats['en_livraison']=en_livraison[0]
+        stats['livrees']=livre[0]
+        stats['revenu_total']=chiffre[0]
+        print(stats)
 
 
+        try:
+            cursor.execute("""
+        SELECT * FROM commande 
+        """)
+            
+            conn.commit()
+        except psycopg2.IntegrityError as e:
+            conn.rollback()
+            print
+            print(e)
+
+        else:
+            print("opération réussie!")
+
+        orders_list=cursor.fetchall()
+        orders = []
+        for order in orders_list:
+                orders.append({
+                    'id': order[1],
+                    'plat_name': order[2],
+                    'client_name': order[4],
+                    'quantite': order[7],
+                    'price': order[11],
+                    'addresse': order[6],
+                    'tel': order[5],
+                    'date': 'Indéfinie',
+                    'note': order[8],
+                    'accompagnement': order[9],
+                    'status': order[10],
+                    'image_url': order[3],
+                })
+        return render_template('admin.html', stats=stats, orders=orders)
     
-    return render_template('admin.html', stats=stats, orders=orders)
+    else:
+        return redirect(url_for('login'))      
+
+
+        
+        
 
 
 
