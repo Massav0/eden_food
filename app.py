@@ -3,6 +3,8 @@ import secrets
 from datetime import timedelta
 from flask import Flask, session, redirect, url_for, request, jsonify, render_template
 import psycopg2
+import random
+import string
 
 from dotenv import load_dotenv
 load_dotenv()  
@@ -153,9 +155,11 @@ def follow():
         cursor=conn.cursor()
         try:
             cursor.execute("""
-        SELECT * FROM commande WHERE nom_client = %s
-        """, ( session.get('username'),))
-            
+    SELECT * FROM commande
+    WHERE nom_client = %s
+    ORDER BY created_at DESC
+""", (session.get('username'),))
+
             conn.commit()
         except psycopg2.IntegrityError as e:
             conn.rollback()
@@ -176,7 +180,7 @@ def follow():
                     'price': order[11],
                     'addresse': order[6],
                     'tel': order[5],
-                    'date': order[0],
+                    'date': order[12].strftime(" %d-%m-%Y à %Hh %Mmin %Ss"),
                     'note': order[8],
                     'accompagnement': order[9],
                     'status': order[10],
@@ -265,8 +269,21 @@ def orders():
             conn = psycopg2.connect(os.getenv("DATABASE_URL"))
             cursor=conn.cursor()
 
+
+            def generer_reference(longueur=14):
+                caracteres = string.ascii_uppercase + string.digits
+                return "eden_food_" + ''.join(random.choice(caracteres) for _ in range(longueur))
+
+            def creer_reference_unique(conn, longueur=14):
+                while True:
+                    ref = generer_reference(longueur)
+                    cursor.execute("SELECT 1 FROM commande WHERE plat_id = %s", (ref,))
+                    if cursor.fetchone() is None:
+                        return ref
+            print(creer_reference_unique(conn, longueur=14))
+
             nom_plat=request.form.get('plat')
-            id_plat=request.form.get('plat_id')
+            id_plat=creer_reference_unique(conn, longueur=14)
             url_plat=request.form.get('plat_image_url')
             nom_client=request.form.get('nom_client')
             tel_client=request.form.get('tel')
@@ -303,7 +320,7 @@ def orders():
                     quantite,                                   
                     note_plat,                    
                     accompagnement,                            
-                    "en attente de paiement",                        
+                    "En attente de paiement",                        
                     prix_plat                            
                 ))
 
@@ -315,10 +332,7 @@ def orders():
                 conn.rollback()
             else:
                 print('insertion réussie')
-                
-
-
-            
+               
 
         else:
 
@@ -355,22 +369,22 @@ def admin_home():
             cursor.execute('SELECT COUNT(*) FROM commande')
             total = cursor.fetchone()
 
-            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("en attente de paiement",))
+            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En attente de paiement",))
             en_attente = cursor.fetchone()
 
             cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("Confirmée",))
             confirme = cursor.fetchone()
 
-            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En préparation",))
+            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En Préparation",))
             en_preparation = cursor.fetchone()
 
-            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En livraison",))
+            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En Livraison",))
             en_livraison = cursor.fetchone()
 
             cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("Livrée",))
             livre = cursor.fetchone()
 
-            cursor.execute('SELECT SUM(prix) FROM commande WHERE statut=%s', ("en attente de paiement",))
+            cursor.execute('SELECT SUM(prix) FROM commande')
             chiffre = cursor.fetchone()
 
         except psycopg2.IntegrityError as e:
@@ -392,19 +406,49 @@ def admin_home():
         print(stats)
 
 
-        try:
-            cursor.execute("""
-        SELECT * FROM commande 
-        """)
-            
-            conn.commit()
-        except psycopg2.IntegrityError as e:
-            conn.rollback()
-            print
-            print(e)
+        if request.method =='POST':
+            try:
+                if request.form.get('filter'):
+                
+                    order_id=request.form.get('status')
+                    cursor.execute("""
+            SELECT * FROM commande WHERE statut = %s ORDER BY created_at DESC
+            """,(order_id,))
+                
+                elif request.form.get('delete'):
+                    order_id=request.form.get('order_id')
+                    print(request.form.get('order_id'))
+                    print(request.form.get('delete'))
+                    cursor.execute("""
+                                DELETE FROM commande WHERE plat_id = %s
+                            """, (order_id,))
+                    
+                    conn.commit()
+
+                    cursor.execute("""
+            SELECT * FROM commande ORDER BY created_at DESC
+            """)
+
+
+                else:
+                    cursor.execute("""
+            SELECT * FROM commande ORDER BY created_at DESC
+            """)
+                
+                conn.commit()
+            except psycopg2.IntegrityError as e:
+                conn.rollback()
+                
+                print(e)
+
+            else:
+                print("opération réussie!")
 
         else:
-            print("opération réussie!")
+            cursor.execute("""
+            SELECT * FROM commande ORDER BY created_at DESC
+            """)
+
 
         orders_list=cursor.fetchall()
         orders = []
@@ -417,7 +461,7 @@ def admin_home():
                     'price': order[11],
                     'addresse': order[6],
                     'tel': order[5],
-                    'date': 'Indéfinie',
+                    'date': order[12].strftime(" %d-%m-%Y à %Hh %Mmin %Ss"),
                     'note': order[8],
                     'accompagnement': order[9],
                     'status': order[10],

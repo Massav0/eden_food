@@ -19,7 +19,7 @@
                 <article class="order-card">
                     <div class="order-header">
                         <div class="order-ref">
-                            <span class="ref-label">Référence</span>
+                            <span class="ref-label">Référence : {{ order.id }}</span>
                         </div>
                         <span class="order-status status-{{ order.status.lower() }}">{{ order.statut }}</span>
                     </div>
@@ -31,7 +31,7 @@
                         <div class="order-details">
                             <h4>{{ order.plat_name }}</h4>
                             <p class="order-quantity">Quantité : {{ order.quantite }}</p>
-                            <p class="order-price">{{ order.price }} FCFA</p>
+                            <p class="order-price">Total: {{ order.price * order.quantite }} FCFA</p>
                         </div>
                     </div>
                     
@@ -44,7 +44,7 @@
                     </div>
                     
                     <div class="order-timeline">
-                        <div class="timeline-step {% if order.status == 'en attente de paiement' %}active{% endif %}">
+                        <div class="timeline-step {% if order.status == 'En attente de paiement' %}active{% endif %}">
                             <div class="timeline-dot"></div>
                             <span>Attente Paiement</span>
                         </div>
