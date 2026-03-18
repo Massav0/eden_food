@@ -1,30 +1,32 @@
 import psycopg2
-try:
-    conn_string = "dbname='test_nk9z' user='mass' password='49BmlMDZsepkqrMGKNFgecuDWeUXdBPE' host='dpg-d4eddshr0fns73blri20-a.oregon-postgres.render.com' port='5432'"
-    conn=psycopg2.connect(conn_string)
-    cursor=conn.cursor()
-except psycopg2.IntegrityError as e:
-    print(e)
 
-else:
-    print('connexion réusssie')
+conn_string = "postgresql://postgres:Louismassavo91%23@db.ijnzozsridabuqxxfxcz.supabase.co:5432/postgres"
 
 try:
+    # Connexion à la base
+    conn = psycopg2.connect(conn_string)
+    cursor = conn.cursor()
+    print("Connexion réussie !")
+
+    # Création de la table
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name TEXT,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        is_admin BOOLEAN DEFAULT FALSE
-    );
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE
+        );
     """)
-
     conn.commit()
-except psycopg2.IntegrityError as e:
-    print(e)
+    print("Table 'users' créée avec succès !")
 
-else:
-    print("Table users créée avec succès !")
-    cursor.close()
+except psycopg2.Error as e:
+    print("Erreur PostgreSQL :", e)
 
+finally:
+    # Toujours fermer le cursor et la connexion
+    if 'cursor' in locals():
+        cursor.close()
+    if 'conn' in locals():
+        conn.close()

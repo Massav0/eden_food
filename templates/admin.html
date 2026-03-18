@@ -1,255 +1,299 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panneau Admin - CEG 1 Epke</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
 
-{% block title %}Gestion des Commandes — Eden Food Admin{% endblock %}
+<!-- HEADER -->
+<header class="site-header">
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i data-lucide="graduation-cap"></i>
+                <div class="logo-text">
+                    <span class="logo-name">CEG 1 Epke</span>
+                    <span class="logo-tagline">Inscriptions en ligne</span>
+                </div>
+            </a>
+            <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/admin" class="nav-link">Tableau de bord</a>
+                <a href="/admin/logout" class="nav-btn nav-btn-outline">
+                    <i data-lucide="log-out"></i> Deconnexion
+                </a>
+            </div>
+        </div>
+    </nav>
+</header>
 
-{% block content %}
-<div class="container admin-container">
+<!-- FLASH -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-wrapper">
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <span>{{ message }}</span>
+                    <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
 
-    <!-- En-tête de la page -->
+<main class="admin-page">
+
+    <!-- En-tête -->
     <div class="admin-header">
-        <h1>Tableau de Bord des Commandes</h1>
-        <p class="subtitle">Gérez et suivez toutes les commandes en temps réel</p>
+        <div>
+            <h1><i data-lucide="layout-dashboard"></i> Administration</h1>
+            <p>{{ total }} dossier(s) au total &mdash; {{ candidats|length }} affiche(s)</p>
+        </div>
+        <a href="/admin/logout" class="btn btn-outline">
+            <i data-lucide="log-out"></i> Deconnexion
+        </a>
     </div>
 
-    <!-- Statistiques rapides -->
-    <div class="stats-grid">
-        <div class="stat-card stat-total">
-            <div class="stat-info">
-                <span class="stat-value">{{ stats.total }}</span>
-                <span class="stat-label">Total Commandes</span>
-            </div>
-        </div>
-
-        <div class="stat-card stat-pending">
-            <div class="stat-info">
-                <span class="stat-value">{{ stats.en_attente }}</span>
-                <span class="stat-label">En Attente</span>
-            </div>
-        </div>
-
-        <div class="stat-card stat-delivered">
-            <div class="stat-info">
-                <span class="stat-value">{{ stats.confirmees }}</span>
-                <span class="stat-label">Confirmées</span>
-            </div>
-        </div>
-
-        <div class="stat-card stat-preparing">
-            <div class="stat-info">
-                <span class="stat-value">{{ stats.en_preparation }}</span>
-                <span class="stat-label">En Préparation</span>
-            </div>
-        </div>
-
-        <div class="stat-card stat-delivering">
-            <div class="stat-info">
-                <span class="stat-value">{{ stats.en_livraison }}</span>
-                <span class="stat-label">En Livraison</span>
-            </div>
-        </div>
-
-        <div class="stat-card stat-delivered">
-            <div class="stat-info">
-                <span class="stat-value">{{ stats.livrees }}</span>
-                <span class="stat-label">Livrées</span>
-            </div>
-        </div>
-
-        <div class="stat-card stat-revenue">
-            <div class="stat-info">
-                <span class="stat-value">{{ stats.revenu_total }}</span>
-                <span class="stat-label">Revenu (FCFA)</span>
-            </div>
-        </div>
+    <!-- Statistiques (cliquables via liens GET) -->
+    <div class="admin-stats">
+        <a href="/admin" class="admin-stat admin-stat-blue">
+            <i data-lucide="users"></i>
+            <span class="stat-val">{{ total }}</span>
+            <span class="stat-lbl">Total</span>
+        </a>
+        <a href="/admin?statut=dossier+incomplet" class="admin-stat admin-stat-orange">
+            <i data-lucide="folder-x"></i>
+            <span class="stat-val">{{ stats.get('dossier incomplet', 0) }}</span>
+            <span class="stat-lbl">Incomplets</span>
+        </a>
+        <a href="/admin?statut=en+attente" class="admin-stat">
+            <i data-lucide="clock"></i>
+            <span class="stat-val">{{ stats.get('en attente', 0) }}</span>
+            <span class="stat-lbl">En attente</span>
+        </a>
+        <a href="/admin?statut=accept%C3%A9" class="admin-stat admin-stat-green">
+            <i data-lucide="check-circle"></i>
+            <span class="stat-val">{{ stats.get('accepté', 0) }}</span>
+            <span class="stat-lbl">Acceptes</span>
+        </a>
+        <a href="/admin?statut=refus%C3%A9" class="admin-stat admin-stat-red">
+            <i data-lucide="x-circle"></i>
+            <span class="stat-val">{{ stats.get('refusé', 0) }}</span>
+            <span class="stat-lbl">Refuses</span>
+        </a>
+        <a href="/admin" class="admin-stat admin-stat-blue">
+            <i data-lucide="credit-card"></i>
+            <span class="stat-val">{{ nb_payes }}</span>
+            <span class="stat-lbl">Payes</span>
+        </a>
     </div>
-</div>
 
+    <!-- Filtres GET -->
+    <form method="GET" action="/admin" class="filter-bar">
+        <div class="filter-group">
+            <label for="f-statut"><i data-lucide="filter"></i> Statut</label>
+            <select name="statut" id="f-statut">
+                <option value="">Tous les statuts</option>
+                <option value="dossier incomplet" {% if filtre_statut == 'dossier incomplet' %}selected{% endif %}>Dossier incomplet</option>
+                <option value="en attente"        {% if filtre_statut == 'en attente'        %}selected{% endif %}>En attente</option>
+                <option value="accepté"           {% if filtre_statut == 'accepté'           %}selected{% endif %}>Accepte</option>
+                <option value="refusé"            {% if filtre_statut == 'refusé'            %}selected{% endif %}>Refuse</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="f-classe"><i data-lucide="book-open"></i> Classe</label>
+            <select name="classe" id="f-classe">
+                <option value="">Toutes les classes</option>
+                {% for cl in classes %}
+                    <option value="{{ cl }}" {% if filtre_classe == cl %}selected{% endif %}>{{ cl }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i data-lucide="search"></i> Appliquer
+            </button>
+            <a href="/admin" class="btn btn-outline btn-sm">
+                <i data-lucide="x"></i> Reinitialiser
+            </a>
+        </div>
+    </form>
 
+    {% if candidats %}
 
-
-
-
-<!-- === BLOCK 2 : Filtre Statut === -->
-<form id="filterStatusForm" class="filter-section" method="post" action="{{url_for('admin_home')}}">
-    <label for="status">Statut</label>
-
-    <select id="status" name="status">
-        <option value="">Tous</option>
-        <option value="En attente de paiement">En attente</option>
-        <option value="Confirmée">Confirmée</option>
-        <option value="En Préparation">En préparation</option>
-        <option value="En Livraison">En livraison</option>
-        <option value="Livrée">Livrée</option>
-    </select>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" value="filter"  name="filter">
-
-
-    <button type="submit">Appliquer</button>
-</form>
-
-<div id="ordersContainer"></div>
-
-
-<!-- === BLOCK 3 : Liste des commandes (sans JS) === -->
-<div class="orders-section">
-
-    {% if orders %}
-        {% for order in orders %}
-        <article class="admin-order-card" data-order-id="{{ order.id }}">
-
-            <!-- Sélection multiple (optionnel) -->
-            <div class="order-select">
-                <input type="checkbox" name="selected_ids" value="{{ order.id }}">
-            </div>
-
-            <div class="order-main">
-
-                <!-- En-tête -->
-                <div class="order-header-admin">
-                    <div class="order-ref-section">
-                        <span class="ref-label">Réf.</span>
-                        <span class="ref-value">{{ order.id }}</span>
-                        <span class="order-date">
-                            {% if order.date %}
-                                {{ order.date }}
+    <!-- TABLEAU desktop -->
+    <div class="table-wrapper">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nom complet</th>
+                    <th>Classe</th>
+                    <th>Telephone</th>
+                    <th>Documents</th>
+                    <th>Paiement</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in candidats %}
+                <tr>
+                    <td class="td-id">{{ c.id }}</td>
+                    <td class="td-name">
+                        <strong>{{ c.prenom }} {{ c.nom }}</strong>
+                        <small>{{ c.date_naissance }}</small>
+                    </td>
+                    <td><span class="classe-tag">{{ c.classe }}</span></td>
+                    <td>{{ c.telephone }}</td>
+                    <td>
+                        <div class="doc-badges">
+                            <span class="doc-badge {{ 'ok' if c.acte_naissance else 'miss' }}">
+                                <i data-lucide="{{ 'check' if c.acte_naissance else 'x' }}"></i> AN
+                            </span>
+                            <span class="doc-badge {{ 'ok' if c.bulletin else 'miss' }}">
+                                <i data-lucide="{{ 'check' if c.bulletin else 'x' }}"></i> BL
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if c.paiement == 'payé' %}
+                            <span class="badge badge-success"><i data-lucide="check-circle"></i> Paye</span>
+                        {% else %}
+                            <span class="badge badge-danger"><i data-lucide="alert-circle"></i> Non paye</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if c.statut == 'accepté' %}
+                            <span class="badge badge-success"><i data-lucide="check-circle"></i> Accepte</span>
+                        {% elif c.statut == 'refusé' %}
+                            <span class="badge badge-danger"><i data-lucide="x-circle"></i> Refuse</span>
+                        {% elif c.statut == 'en attente' %}
+                            <span class="badge badge-warning"><i data-lucide="clock"></i> En attente</span>
+                        {% else %}
+                            <span class="badge badge-incomplete"><i data-lucide="folder-x"></i> Incomplet</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="/admin/dossier/{{ c.id }}" class="btn-action btn-detail">
+                                <i data-lucide="eye"></i> Detail
+                            </a>
+                            {% if c.statut == 'en attente' %}
+                            <a href="/valider/{{ c.id }}" class="btn-action btn-accept"
+                               onclick="return confirm('Accepter {{ c.prenom }} {{ c.nom }} ?')">
+                                <i data-lucide="check"></i> Accepter
+                            </a>
+                            <a href="/refuser/{{ c.id }}" class="btn-action btn-reject"
+                               onclick="return confirm('Refuser {{ c.prenom }} {{ c.nom }} ?')">
+                                <i data-lucide="x"></i> Refuser
+                            </a>
                             {% endif %}
-                        </span>
-                    </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- CARTES mobile -->
+    <div class="mobile-cards">
+        {% for c in candidats %}
+        <div class="mobile-card">
+            <div class="mobile-card-header">
+                <div>
+                    <strong>{{ c.prenom }} {{ c.nom }}</strong>
+                    <small>{{ c.date_naissance }} &bull; {{ c.telephone }}</small>
                 </div>
-
-                <!-- Contenu principal -->
-                <div class="order-content-admin">
-
-                    <div class="order-image-small">
-                        <img src="{{ order.image_url or url_for('static', filename='images/default.jpg') }}"
-                             alt="{{ order.plat_name }}">
-                    </div>
-
-                    <div class="order-details-admin">
-                        <h4>{{ order.plat_name }}</h4>
-                        <div class="order-meta">
-                            <span>Client: {{ order.client_name }}</span>
-                            <span>Tél: {{ order.tel or 'N/A' }}</span>
-                            <span>Prix unitaire: {{ order.price }}</span>
-                            <span>Qté : {{ order.quantite }}</span>
-                        </div>
-                    </div>
-
-                    <div class="order-price-section">
-                        <span class="price-label">Total</span>
-                        <span class="price-value">{{ order.price * order.quantite }} FCFA</span>
-                    </div>
-
-                </div>
-
-                <!-- Adresse -->
-                <div class="order-address">
-                    {{ order.addresse }}
-                </div>
-
-                <!-- Note client -->
-                {% if order.note %}
-                <div class="order-note">{{ order.note }}</div>
-                {% endif %}
-                <div class="order-timeline">
-                        <div class="timeline-step {% if order.status == 'En attente de paiement' %}active{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <span>Attente Paiement</span>
-                        </div>
-                        <div class="timeline-step {% if order.status == 'Confirmée' %}active{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <span>Confirmée</span>
-                        </div>
-                        <div class="timeline-step {% if order.status == 'En Préparation' %}active{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <span>En préparation</span>
-                        </div>
-                        <div class="timeline-step {% if order.status == 'En Livraison' %}active{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <span>En livraison</span>
-                        </div>
-                        <div class="timeline-step {% if order.status == 'Livrée' %}active{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <span>Livrée</span>
-                        </div>
-                    </div>
-
-                <!-- Actions -->
-                <div class="order-actions-admin">
-
-                    
-                    <a href=""
-                       target="_blank"
-                       class="btn-action btn-print">Imprimer</a>
-
-                    <!-- Modifier statut : bouton + formulaire -->
-                    <button type="button"
-                            class="btn-action btn-status"
-                            onclick="this.nextElementSibling.style.display='block'">
-                        Modifier statut
-                    </button>
-
-                    <form method="post"
-                          action="{{ url_for('update_order') }}"
-                          style="display:none; margin-top:2px;">
-                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                        <select name="status">
-                            <option value="En attente de paiement"     {% if order.statut=='En attente' %}selected{% endif %}>En attente</option>
-                            <option value="Confirmée"      {% if order.statut=='Confirmée' %}selected{% endif %}>Confirmée</option>
-                            <option value="En Préparation" {% if order.statut=='En préparation' %}selected{% endif %}>En préparation</option>
-                            <option value="En Livraison"   {% if order.statut=='En livraison' %}selected{% endif %}>En livraison</option>
-                            <option value="Livrée"         {% if order.statut=='Livrée' %}selected{% endif %}>Livrée</option>
-                        </select>
-                        <input type="hidden" value="{{order.id}}"  name="order_ids">
-
-                        
-                        <button type="submit" class="btn-action btn-save">Enregistrer</button>
-                    </form>
-
-                    <!-- Supprimer -->
-                    <form method="post"
-                          action="{{ url_for('admin_home') }}"
-                          style="display:inline;"
-                          onsubmit="return confirm('Supprimer cette commande ?')">
-                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                          <input type="hidden" value="{{order.id}}"  name="order_id">
-                          <input type="hidden" value="delete"  name="delete">
-                        <button type="submit" class="btn-action btn-delete">Supprimer</button>
-                    </form>
-
-                </div>
-
+                <span class="classe-tag">{{ c.classe }}</span>
             </div>
-
-        </article>
+            <div class="mobile-card-badges">
+                {% if c.statut == 'accepté' %}
+                    <span class="badge badge-success"><i data-lucide="check-circle"></i> Accepte</span>
+                {% elif c.statut == 'refusé' %}
+                    <span class="badge badge-danger"><i data-lucide="x-circle"></i> Refuse</span>
+                {% elif c.statut == 'en attente' %}
+                    <span class="badge badge-warning"><i data-lucide="clock"></i> En attente</span>
+                {% else %}
+                    <span class="badge badge-incomplete"><i data-lucide="folder-x"></i> Incomplet</span>
+                {% endif %}
+                {% if c.paiement == 'payé' %}
+                    <span class="badge badge-success"><i data-lucide="check-circle"></i> Paye</span>
+                {% else %}
+                    <span class="badge badge-danger"><i data-lucide="alert-circle"></i> Non paye</span>
+                {% endif %}
+                <span class="doc-badge {{ 'ok' if c.acte_naissance else 'miss' }}">
+                    <i data-lucide="{{ 'check' if c.acte_naissance else 'x' }}"></i> AN
+                </span>
+                <span class="doc-badge {{ 'ok' if c.bulletin else 'miss' }}">
+                    <i data-lucide="{{ 'check' if c.bulletin else 'x' }}"></i> BL
+                </span>
+            </div>
+            <div class="mobile-card-actions">
+                <a href="/admin/dossier/{{ c.id }}" class="btn-action btn-detail">
+                    <i data-lucide="eye"></i> Voir le dossier
+                </a>
+                {% if c.statut == 'en attente' %}
+                <a href="/valider/{{ c.id }}" class="btn-action btn-accept"
+                   onclick="return confirm('Accepter {{ c.prenom }} {{ c.nom }} ?')">
+                    <i data-lucide="check"></i> Accepter
+                </a>
+                <a href="/refuser/{{ c.id }}" class="btn-action btn-reject"
+                   onclick="return confirm('Refuser {{ c.prenom }} {{ c.nom }} ?')">
+                    <i data-lucide="x"></i> Refuser
+                </a>
+                {% endif %}
+            </div>
+        </div>
         {% endfor %}
+    </div>
 
     {% else %}
-
-        <div class="empty-state">
-            <h3>Aucune commande trouvée</h3>
-            <p>Essayez de changer les filtres.</p>
-        </div>
-
-    {% endif %}
-
-    <!-- Pagination optionnelle -->
-    {% if pagination %}
-    <div class="pagination">
-        {% if pagination.has_prev %}
-        <a href="{{ url_for('admin_orders', page=pagination.prev_num, **request.args.to_dict()) }}">Précédent</a>
-        {% endif %}
-        Page {{ pagination.page }} / {{ pagination.pages }}
-        {% if pagination.has_next %}
-        <a href="{{ url_for('admin_orders', page=pagination.next_num, **request.args.to_dict()) }}">Suivant</a>
-        {% endif %}
+    <div class="empty-state">
+        <i data-lucide="search-x"></i>
+        <h3>Aucun dossier ne correspond</h3>
+        <p>Modifiez les filtres ou <a href="/admin">reinitialisez</a>.</p>
     </div>
     {% endif %}
 
-</div>
+</main>
 
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-brand">
+            <i data-lucide="graduation-cap" class="footer-logo-icon"></i>
+            <div class="footer-brand-text">
+                <strong>CEG 1 Epke</strong>
+                <span>College d'Enseignement General</span>
+            </div>
+        </div>
+        <div class="footer-links">
+            <a href="/admin">Tableau de bord</a>
+            <a href="/admin/logout">Deconnexion</a>
+        </div>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Plateforme d'inscription numerique</p>
+    </div>
+</footer>
 
+<script>
+    lucide.createIcons();
+    const btn  = document.getElementById('hamburger');
+    const menu = document.getElementById('nav-menu');
+    btn.addEventListener('click', () => {
+        const open = menu.classList.toggle('is-open');
+        btn.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', open);
+    });
+</script>
 
-{% endblock %}
+</body>
+</html>

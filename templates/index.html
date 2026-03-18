@@ -1,8 +1,250 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil - CEG 1 Epke</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
 
-{% block title %}Menu – Eden Food{% endblock %}
+<!-- HEADER -->
+<header class="site-header">
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i data-lucide="graduation-cap"></i>
+                <div class="logo-text">
+                    <span class="logo-name">CEG 1 Epke</span>
+                    <span class="logo-tagline">Inscriptions en ligne</span>
+                </div>
+            </a>
+            <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/" class="nav-link">Accueil</a>
+                {% if session.get('candidat_id') %}
+                    <a href="/dashboard" class="nav-link">Mon dossier</a>
+                    <a href="/logout" class="nav-btn nav-btn-outline">Deconnexion</a>
+                {% elif session.get('admin') %}
+                    <a href="/admin" class="nav-link">Administration</a>
+                    <a href="/admin/logout" class="nav-btn nav-btn-outline">Deconnexion</a>
+                {% else %}
+                    <a href="/login" class="nav-link">Se connecter</a>
+                    <a href="/register" class="nav-btn nav-btn-primary">S'inscrire</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+</header>
 
-{% block content %}
-<h1>Notre Menu</h1>
-<p>Bienvenue {{user}}</p>
-{% endblock %}
+<!-- FLASH -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-wrapper">
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <span>{{ message }}</span>
+                    <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<!-- CONTENU -->
+<main>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-inner">
+            <div class="hero-content">
+                <p class="hero-label">College d'Enseignement General N1</p>
+                <h1 class="hero-title">CEG 1 Epke</h1>
+                <p class="hero-subtitle">
+                    Inscrivez votre enfant en ligne, soumettez vos documents
+                    et suivez votre dossier sans vous deplacer.
+                </p>
+                <div class="hero-actions">
+                    <a href="/register" class="btn btn-primary btn-lg">
+                        <i data-lucide="user-plus"></i> Commencer l'inscription
+                    </a>
+                    <a href="/login" class="btn btn-ghost btn-lg">
+                        <i data-lucide="log-in"></i> Mon espace
+                    </a>
+                </div>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">En ligne</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">0</span>
+                    <span class="stat-label">File d'attente</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">24h</span>
+                    <span class="stat-label">Disponible</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ETAPES -->
+    <section class="steps-section">
+        <div class="section-inner">
+            <h2 class="section-title">Comment ca marche ?</h2>
+            <p class="section-sub">Un processus simple en 4 etapes depuis votre telephone ou ordinateur.</p>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-num">01</div>
+                    <i data-lucide="user-round" class="step-icon"></i>
+                    <h3>Creez votre compte</h3>
+                    <p>Renseignez les informations de l'eleve et choisissez la classe souhaitee.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">02</div>
+                    <i data-lucide="file-up" class="step-icon"></i>
+                    <h3>Soumettez vos documents</h3>
+                    <p>Telechargez l'acte de naissance et le dernier bulletin scolaire.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">03</div>
+                    <i data-lucide="credit-card" class="step-icon"></i>
+                    <h3>Reglez les frais</h3>
+                    <p>Effectuez le paiement des frais d'inscription depuis votre espace.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">04</div>
+                    <i data-lucide="circle-check" class="step-icon"></i>
+                    <h3>Suivez votre dossier</h3>
+                    <p>Consultez en temps reel le statut de votre candidature.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AVANTAGES -->
+    <section class="benefits-section">
+        <div class="section-inner benefits-inner">
+            <div class="benefits-text">
+                <h2 class="section-title left">Pourquoi s'inscrire en ligne ?</h2>
+                <ul class="benefits-list">
+                    <li>
+                        <i data-lucide="clock" class="benefit-icon"></i>
+                        <div>
+                            <strong>Gain de temps</strong>
+                            <p>Plus besoin de se deplacer. L'inscription prend moins de 10 minutes.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i data-lucide="smartphone" class="benefit-icon"></i>
+                        <div>
+                            <strong>Accessible partout</strong>
+                            <p>Depuis votre telephone, tablette ou ordinateur, a toute heure.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i data-lucide="bell" class="benefit-icon"></i>
+                        <div>
+                            <strong>Suivi en temps reel</strong>
+                            <p>Consultez l'etat de votre dossier des que vous le souhaitez.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i data-lucide="shield-check" class="benefit-icon"></i>
+                        <div>
+                            <strong>Donnees securisees</strong>
+                            <p>Vos informations et documents sont stockes de facon securisee.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="benefits-visual">
+                <div class="preview-card">
+                    <div class="preview-header">
+                        <span><i data-lucide="folder-open"></i> Mon dossier</span>
+                        <span class="badge-preview">En attente</span>
+                    </div>
+                    <div class="preview-rows">
+                        <div class="preview-row">
+                            <span>Eleve</span><strong>AHOUANNOU Jean</strong>
+                        </div>
+                        <div class="preview-row">
+                            <span>Classe</span><strong>6eme</strong>
+                        </div>
+                        <div class="preview-row">
+                            <span>Acte de naissance</span>
+                            <strong class="ok"><i data-lucide="check"></i> Soumis</strong>
+                        </div>
+                        <div class="preview-row">
+                            <span>Bulletin</span>
+                            <strong class="ok"><i data-lucide="check"></i> Soumis</strong>
+                        </div>
+                        <div class="preview-row">
+                            <span>Paiement</span>
+                            <strong class="ok"><i data-lucide="check"></i> Paye</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="cta-inner">
+            <h2>Pret a inscrire votre enfant ?</h2>
+            <p>Le processus est gratuit et prend moins de 10 minutes.</p>
+            <a href="/register" class="btn btn-primary btn-lg">
+                <i data-lucide="arrow-right"></i> Demarrer l'inscription
+            </a>
+        </div>
+    </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-brand">
+            <i data-lucide="graduation-cap" class="footer-logo-icon"></i>
+            <div class="footer-brand-text">
+                <strong>CEG 1 Epke</strong>
+                <span>College d'Enseignement General</span>
+            </div>
+        </div>
+        <div class="footer-links">
+            <a href="/">Accueil</a>
+            <a href="/register">Inscription</a>
+            <a href="/login">Connexion</a>
+            <a href="/admin/login">Administration</a>
+        </div>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Plateforme d'inscription numerique</p>
+    </div>
+</footer>
+
+<script>
+    lucide.createIcons();
+    const btn  = document.getElementById('hamburger');
+    const menu = document.getElementById('nav-menu');
+    btn.addEventListener('click', () => {
+        const open = menu.classList.toggle('is-open');
+        btn.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', open);
+    });
+    menu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            menu.classList.remove('is-open');
+            btn.classList.remove('is-open');
+        });
+    });
+</script>
+
+</body>
+</html>

@@ -3,114 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-
-    <title>{% block title %}Eden Food – Commande en ligne{% endblock %}</title>
-
-    <!-- Lien vers le CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>{% block title %}CEG 1 Epkè – Inscriptions en ligne{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 </head>
-
 <body>
 
-    <!-- ================= HEADER PREMIUM ================= -->
-    <header class="header">
-        <div class="container header-content">
-            <div class="logo">
-                <!-- Logo SVG Moderne : Chef Hat avec Ustensiles -->
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon">
-                    <!-- Chef Hat -->
-                    <path d="M12 20C12 20 10 16 12 12C12 12 14 8 18 8C18 8 18 4 24 4C30 4 30 8 30 8C34 8 36 12 36 12C38 16 36 20 36 20" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10 20H38V28C38 30 36 32 34 32H14C12 32 10 30 10 28V20Z" fill="white" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <!-- Détails du chapeau -->
-                    <path d="M14 20V28M20 20V28M26 20V28M32 20V28" stroke="#b22222" stroke-width="2" stroke-linecap="round"/>
-                    <!-- Fourchette et Couteau (croisés) -->
-                    <path d="M6 38L8 34M8 34L10 38M8 34V42" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M40 34V42M40 34C40 34 38 36 40 38" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span class="logo-text">Eden Food</span>
+<!-- ═══════════════════════════════════════════════
+     HEADER / NAVIGATION
+     ═══════════════════════════════════════════════ -->
+<header class="site-header">
+    <nav class="navbar">
+        <div class="nav-container">
+
+            <!-- Logo -->
+            <a href="{{ url_for('index') }}" class="nav-logo">
+                <span class="logo-emblem">🎓</span>
+                <div class="logo-text">
+                    <span class="logo-name">CEG 1 Epkè</span>
+                    <span class="logo-tagline">Inscriptions en ligne</span>
+                </div>
+            </a>
+
+            <!-- Bouton hamburger (mobile) -->
+            <button class="hamburger" id="hamburger" aria-label="Ouvrir le menu" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <!-- Liens de navigation -->
+            <div class="nav-menu" id="nav-menu">
+                <a href="{{ url_for('index') }}" class="nav-link">Accueil</a>
+
+                {% if session.get('candidat_id') %}
+                    <a href="{{ url_for('dashboard') }}" class="nav-link">Mon dossier</a>
+                    <a href="{{ url_for('logout') }}" class="nav-btn nav-btn-outline">Déconnexion</a>
+
+                {% elif session.get('admin') %}
+                    <a href="{{ url_for('admin') }}" class="nav-link">Administration</a>
+                    <a href="{{ url_for('admin_logout') }}" class="nav-btn nav-btn-outline">Déconnexion</a>
+
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link">Se connecter</a>
+                    <a href="{{ url_for('register') }}" class="nav-btn nav-btn-primary">S'inscrire</a>
+                {% endif %}
             </div>
-            
-            {% if session.get('username') and session.is_admin == False %}
-            <nav class="navbar">
-                <a href="{{ url_for('menu') }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                    </svg>
-                    Menu
-                </a>
-                <a href="{{ url_for('follow') }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <path d="M16 10a4 4 0 0 1-8 0"></path>
-                    </svg>
-                    Mes commandes
-                </a>
-                <a href="{{ url_for('contact') }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    Contact
-                </a>
-                <a href="{{ url_for('logout') }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16 17 21 12 16 7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                    Logout
-                </a>
-            </nav>
-            {%elif session.get('username') and session.is_admin == True %}
-            <nav class="navbar">
-                <a href="{{ url_for('logout') }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16 17 21 12 16 7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                    Logout
-                </a>
-            </nav>
 
-            {% else %}
-            <nav class="navbar">
-                <a href="{{ url_for('signup') }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="8.5" cy="7" r="4"></circle>
-                        <line x1="20" y1="8" x2="20" y2="14"></line>
-                        <line x1="23" y1="11" x2="17" y2="11"></line>
-                    </svg>
-                    Sign up
-                </a>
-                <a href="{{ url_for('login') }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                        <polyline points="10 17 15 12 10 7"></polyline>
-                        <line x1="15" y1="12" x2="3" y2="12"></line>
-                    </svg>
-                    Login
-                </a>
-            </nav>  
-            {% endif %}
         </div>
-    </header>
+    </nav>
+</header>
 
-    <!-- ================= MAIN PREMIUM ================= -->
-    <main class="main-content">
-        {% block content %}
-        {% endblock %}
-    </main>
 
-    <!-- ================= FOOTER PREMIUM ================= -->
-    <footer class="footer">
-        <div class="container">
-            <p>© 2025 Eden Food – Tous droits réservés.</p>
+<!-- ═══════════════════════════════════════════════
+     MESSAGES FLASH (notifications)
+     ═══════════════════════════════════════════════ -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-wrapper" role="alert">
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <span class="flash-text">{{ message }}</span>
+                    <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Fermer">×</button>
+                </div>
+            {% endfor %}
         </div>
-    </footer>
+    {% endif %}
+{% endwith %}
+
+
+<!-- ═══════════════════════════════════════════════
+     CONTENU PRINCIPAL
+     ═══════════════════════════════════════════════ -->
+<main class="main-content">
+    {% block content %}{% endblock %}
+</main>
+
+
+<!-- ═══════════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════════ -->
+<footer class="site-footer">
+    <div class="footer-container">
+
+        <div class="footer-brand">
+            <span class="logo-emblem">🎓</span>
+            <div class="footer-brand-text">
+                <strong>CEG 1 Epkè</strong>
+                <span>Collège d'Enseignement Général</span>
+            </div>
+        </div>
+
+        <div class="footer-links">
+            <a href="{{ url_for('index') }}">Accueil</a>
+            <a href="{{ url_for('register') }}">Inscription</a>
+            <a href="{{ url_for('login') }}">Connexion</a>
+            <a href="{{ url_for('admin_login') }}">Administration</a>
+        </div>
+
+        <p class="footer-copy">
+            © 2024 CEG 1 Epkè — Plateforme d'inscription numérique
+        </p>
+
+    </div>
+</footer>
+
+
+<!-- ═══════════════════════════════════════════════
+     SCRIPT : menu hamburger mobile
+     ═══════════════════════════════════════════════ -->
+<script>
+    const btn  = document.getElementById('hamburger');
+    const menu = document.getElementById('nav-menu');
+
+    btn.addEventListener('click', () => {
+        const open = menu.classList.toggle('is-open');
+        btn.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', open);
+    });
+
+    // Fermer le menu au clic sur un lien (mobile)
+    menu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            menu.classList.remove('is-open');
+            btn.classList.remove('is-open');
+            btn.setAttribute('aria-expanded', false);
+        });
+    });
+</script>
+
+{% block scripts %}{% endblock %}
 
 </body>
 </html>

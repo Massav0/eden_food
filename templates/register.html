@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - CEG 1 Epke</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i data-lucide="graduation-cap"></i>
+                <div class="logo-text">
+                    <span class="logo-name">CEG 1 Epke</span>
+                    <span class="logo-tagline">Inscriptions en ligne</span>
+                </div>
+            </a>
+            <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/" class="nav-link">Accueil</a>
+                <a href="/login" class="nav-link">Se connecter</a>
+                <a href="/register" class="nav-btn nav-btn-primary">S'inscrire</a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<!-- FLASH -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-wrapper">
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <span>{{ message }}</span>
+                    <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<!-- CONTENU -->
+<main class="form-page">
+    <div class="form-card">
+
+        <div class="form-card-header">
+            <h1><i data-lucide="user-round-plus"></i> Nouvelle inscription</h1>
+            <p>Remplissez tous les champs pour creer votre dossier</p>
+        </div>
+
+        <form action="/register" method="POST" enctype="multipart/form-data" class="form">
+
+            <!-- Informations personnelles -->
+            <div class="form-section">
+                <h2 class="form-section-title">
+                    <i data-lucide="circle-user"></i> Informations personnelles
+                </h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nom">Nom <span class="required">*</span></label>
+                        <input type="text" id="nom" name="nom"
+                               placeholder="Ex : AHOUANNOU" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="prenom">Prenom(s) <span class="required">*</span></label>
+                        <input type="text" id="prenom" name="prenom"
+                               placeholder="Ex : Jean-Baptiste" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date_naissance">Date de naissance <span class="required">*</span></label>
+                        <input type="date" id="date_naissance" name="date_naissance" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="classe">Classe demandee <span class="required">*</span></label>
+                        <select id="classe" name="classe" required>
+                            <option value="" disabled selected>Choisir une classe</option>
+                            <option value="6eme">6eme</option>
+                            <option value="5eme">5eme</option>
+                            <option value="4eme">4eme</option>
+                            <option value="3eme">3eme</option>
+                            <option value="2nde">2nde</option>
+                            <option value="1ere">1ere</option>
+                            <option value="Terminale">Terminale</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compte -->
+            <div class="form-section">
+                <h2 class="form-section-title">
+                    <i data-lucide="key-round"></i> Compte et connexion
+                </h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="telephone">Telephone <span class="required">*</span></label>
+                        <input type="tel" id="telephone" name="telephone"
+                               placeholder="Ex : 97000000" required>
+                        <small>Ce numero servira d'identifiant de connexion</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="mot_de_passe">Mot de passe <span class="required">*</span></label>
+                        <input type="password" id="mot_de_passe" name="mot_de_passe"
+                               placeholder="Creez un mot de passe" required>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-full">
+                <i data-lucide="send"></i> Soumettre mon dossier
+            </button>
+            <p class="auth-redirect">
+                Deja inscrit ? <a href="/login">Se connecter</a>
+            </p>
+
+        </form>
+    </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-brand">
+            <i data-lucide="graduation-cap" class="footer-logo-icon"></i>
+            <div class="footer-brand-text">
+                <strong>CEG 1 Epke</strong>
+                <span>College d'Enseignement General</span>
+            </div>
+        </div>
+        <div class="footer-links">
+            <a href="/">Accueil</a>
+            <a href="/register">Inscription</a>
+            <a href="/login">Connexion</a>
+            <a href="/admin/login">Administration</a>
+        </div>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Plateforme d'inscription numerique</p>
+    </div>
+</footer>
+
+<script>
+    lucide.createIcons();
+    const btn  = document.getElementById('hamburger');
+    const menu = document.getElementById('nav-menu');
+    btn.addEventListener('click', () => {
+        const open = menu.classList.toggle('is-open');
+        btn.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', open);
+    });
+
+    // Afficher le nom du fichier selectionne
+    document.getElementById('acte_naissance').addEventListener('change', function() {
+        document.getElementById('acte-label').textContent =
+            this.files[0] ? this.files[0].name : 'Choisir un fichier';
+    });
+    document.getElementById('bulletin').addEventListener('change', function() {
+        document.getElementById('bulletin-label').textContent =
+            this.files[0] ? this.files[0].name : 'Choisir un fichier';
+    });
+</script>
+</body>
+</html>

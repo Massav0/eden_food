@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - CEG 1 Epke</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i data-lucide="graduation-cap"></i>
+                <div class="logo-text">
+                    <span class="logo-name">CEG 1 Epke</span>
+                    <span class="logo-tagline">Inscriptions en ligne</span>
+                </div>
+            </a>
+            <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/" class="nav-link">Accueil</a>
+                <a href="/login" class="nav-link">Se connecter</a>
+                <a href="/register" class="nav-btn nav-btn-primary">S'inscrire</a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<!-- FLASH -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-wrapper">
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <span>{{ message }}</span>
+                    <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<!-- CONTENU -->
+<main class="auth-page">
+    <div class="auth-card">
+
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i data-lucide="lock-keyhole"></i>
+            </div>
+            <h1>Espace eleve</h1>
+            <p>Connectez-vous pour acceder a votre dossier</p>
+        </div>
+
+        <form action="/login" method="POST" class="form">
+            <div class="form-group">
+                <label for="telephone">
+                    <i data-lucide="phone"></i> Numero de telephone
+                </label>
+                <input type="tel" id="telephone" name="telephone"
+                       placeholder="Ex : 97000000" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="mot_de_passe">
+                    <i data-lucide="key-round"></i> Mot de passe
+                </label>
+                <input type="password" id="mot_de_passe" name="mot_de_passe"
+                       placeholder="Votre mot de passe" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-full">
+                <i data-lucide="log-in"></i> Se connecter
+            </button>
+        </form>
+
+        <p class="auth-redirect">
+            Pas encore inscrit ?
+            <a href="/register">Creer un compte</a>
+        </p>
+        <p class="auth-redirect">
+            <a href="/admin/login">
+                <i data-lucide="shield"></i> Acces administration
+            </a>
+        </p>
+
+    </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-brand">
+            <i data-lucide="graduation-cap" class="footer-logo-icon"></i>
+            <div class="footer-brand-text">
+                <strong>CEG 1 Epke</strong>
+                <span>College d'Enseignement General</span>
+            </div>
+        </div>
+        <div class="footer-links">
+            <a href="/">Accueil</a>
+            <a href="/register">Inscription</a>
+            <a href="/login">Connexion</a>
+            <a href="/admin/login">Administration</a>
+        </div>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Plateforme d'inscription numerique</p>
+    </div>
+</footer>
+
+<script>
+    lucide.createIcons();
+    const btn  = document.getElementById('hamburger');
+    const menu = document.getElementById('nav-menu');
+    btn.addEventListener('click', () => {
+        const open = menu.classList.toggle('is-open');
+        btn.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', open);
+    });
+</script>
+</body>
+</html>

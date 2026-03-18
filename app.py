@@ -1,550 +1,492 @@
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from werkzeug.utils import secure_filename
+import mysql.connector
 import os
-import secrets
-from datetime import timedelta
-from flask import Flask, session, redirect, url_for, request, jsonify, render_template
-import psycopg2
-import random
-import string
 
-from dotenv import load_dotenv
-load_dotenv()  
+# ================================================================
+#  APPLICATION
+# ================================================================
 
+app = Flask(__name__)
+app.secret_key = 'ceg1_epke_secret_2024'
 
-from flask_wtf import CSRFProtect
+# ================================================================
+#  CONFIGURATION
+# ================================================================
 
-def create_app():
-    app = Flask(__name__)
+DB_HOST     = 'localhost'
+DB_USER     = 'root'
+DB_PASSWORD = ''            # vide par défaut sur XAMPP
+DB_NAME     = 'ceg1_epke'
 
-    secret = os.getenv('SECRET_KEY')
-    if not secret:
-        raise RuntimeError("SECRET_KEY manquante — définir la variable d'environnement SECRET_KEY")
-    app.config['SECRET_KEY'] = secret
-    # production-friendliness
-    app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE','1') == '1'
-    app.config['DEBUG'] = os.getenv('FLASK_DEBUG','0') == '1'
-    print('SECRET_KEY chargée')
+UPLOAD_FOLDER      = os.path.join('static', 'uploads')
+ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 
-    # optionnel : sécurité cookies (ajuster en prod)
-    app.config.update(
-        SESSION_COOKIE_NAME="session",
-        SESSION_COOKIE_SECURE=False,        # en prod -> True (HTTPS obligatoire)
-        SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SAMESITE="Lax",
-        PERMANENT_SESSION_LIFETIME=timedelta(days=1),
+ADMIN_USERNAME = 'admin'
+ADMIN_PASSWORD = 'admin'
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# ================================================================
+#  UTILITAIRES
+# ================================================================
+
+def get_db():
+    """Retourne une connexion MySQL."""
+    return mysql.connector.connect(
+        host     = DB_HOST,
+        user     = DB_USER,
+        password = DB_PASSWORD,
+        database = DB_NAME
     )
 
-    # protection CSRF pour tous les forms (Flask-WTF)
-    csrf = CSRFProtect(app)
+def allowed_file(filename):
+    """Vérifie si l'extension est autorisée."""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-    return app
+def save_file(file, prefix):
+    """Sauvegarde un fichier uploadé et retourne son nom, ou None."""
+    if file and file.filename and allowed_file(file.filename):
+        filename = secure_filename(f"{prefix}_{file.filename}")
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return filename
+    return None
 
-app = create_app()
+# ================================================================
+#  ROUTE 1 — Accueil
+# ================================================================
 
-
-
-
-
-@app.route("/")
+@app.route('/')
 def index():
-    session.clear()
-    if session.get('username'):
-        return render_template('index.html')  
-    else:
-        return render_template('connexion.html')
+    return render_template('index.html')
 
+# ================================================================
+#  ROUTE 2 — Inscription élève
+# ================================================================
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        nom            = request.form.get('nom', '').strip()
+        prenom         = request.form.get('prenom', '').strip()
+        date_naissance = request.form.get('date_naissance', '').strip()
+        classe         = request.form.get('classe', '').strip()
+        telephone      = request.form.get('telephone', '').strip()
+        mot_de_passe   = request.form.get('mot_de_passe', '').strip()
 
+        if not all([nom, prenom, date_naissance, classe, telephone, mot_de_passe]):
+            flash('Tous les champs obligatoires doivent être remplis.', 'error')
+            return render_template('register.html')
 
-@app.route("/signup", methods=['POST', 'GET'])
-def signup():
+        try:
+            conn   = get_db()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO candidats
+                    (nom, prenom, date_naissance, classe, telephone,
+                     mot_de_passe, statut)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (nom, prenom, date_naissance, classe, telephone,
+                  mot_de_passe, 'dossier incomplet'))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            flash('Inscription réussie ! Vous pouvez maintenant vous connecter.', 'success')
+            return redirect(url_for('login'))
+
+        except mysql.connector.IntegrityError:
+            flash('Ce numéro de téléphone est déjà utilisé.', 'error')
+        except Exception as e:
+            flash(f"Erreur : {str(e)}", 'error')
+
+    return render_template('register.html')
+
+# ================================================================
+#  ROUTE 3 — Connexion élève
+# ================================================================
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if session.get('candidat_id'):
+        return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
-        print('informations à inscrire' , request.form)
-        nom=request.form.get('name')
-        mail=request.form.get('email')
-        pwd=request.form.get('password')
+        telephone    = request.form.get('telephone', '').strip()
+        mot_de_passe = request.form.get('mot_de_passe', '').strip()
 
-        def insert_for_signup(n, m, p):
-            conn = psycopg2.connect(os.getenv("DATABASE_URL"))            
-            cursor=conn.cursor()
-            try:
-                cursor.execute("""
-            INSERT INTO users (name, email, password, is_admin)
-            VALUES (%s, %s, %s, %s)
-            """, (n, m, p, True))
+        if not telephone or not mot_de_passe:
+            flash('Veuillez remplir tous les champs.', 'error')
+            return render_template('login.html')
 
-                conn.commit()
-            except psycopg2.IntegrityError as e:
-                conn.rollback()
-                print(e)
-
-            else:
-                print("opération réussie!")
-               
-        
-        insert_for_signup(nom, mail, pwd)
-
-
-
-        return render_template('connexion.html')
-
-
-    else:    
-        return render_template('inscription.html')
-
-
-
-
-@app.route("/login", methods=['POST', 'GET'])
-def login():
-    if request.method=='POST':
-        print(request.form)
-        mail=request.form.get('email')
-        pwd=request.form.get('password')
-
-        def verify_user( m, p):
-            conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-            cursor=conn.cursor()
-            try:
-                cursor.execute("""
-            SELECT name, is_admin FROM users WHERE email = %s and password = %s
-            """, ( m, p))
-                
-                rows=cursor.fetchone()
-                
-
-                print(rows)
-                conn.commit()
-            except psycopg2.IntegrityError as e:
-                conn.rollback()
-                print(e)
-
-            else:
-                print("opération réussie!")
-            
-            if rows != None:
-                print( 'utilisateur trouvé')
-                row=rows[0]
-                row_admin=rows[1]
-                session['username']=row
-                session['is_admin']=row_admin
-                print(session)
-                if row_admin == False:
-                    return redirect (url_for ('menu'))
-                else:
-                    return redirect(url_for( 'admin_home'))
-
-            else:
-                print( 'utilisateur non trouvé')
-                return redirect (url_for ('login'))
-            
-        
-        return verify_user(mail, pwd)
-
-
-    else:
-        return render_template('connexion.html')
-
-
-
-
-@app.route("/follow")
-def follow():
-    if session.get('username'):
-        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-        cursor=conn.cursor()
         try:
+            conn   = get_db()
+            cursor = conn.cursor(dictionary=True)
             cursor.execute("""
-    SELECT * FROM commande
-    WHERE nom_client = %s
-    ORDER BY created_at DESC
-""", (session.get('username'),))
-
-            conn.commit()
-        except psycopg2.IntegrityError as e:
-            conn.rollback()
-            print
-            print(e)
-
-        else:
-            print("opération réussie!")
-
-        orders_list=cursor.fetchall()
-        orders = []
-        for order in orders_list:
-                orders.append({
-                    'id': order[1],
-                    'plat_name': order[2],
-                    'client_name': order[4],
-                    'quantite': order[7],
-                    'price': order[11],
-                    'addresse': order[6],
-                    'tel': order[5],
-                    'date': order[12].strftime(" %d-%m-%Y à %Hh %Mmin %Ss"),
-                    'note': order[8],
-                    'accompagnement': order[9],
-                    'status': order[10],
-                    'image_url': order[3],
-                })
-            
-
-        print(orders)
-    
-    else:
-        return redirect(url_for('login'))
-
-    return render_template('suivi.html', orders=orders)
-
-
-
-
-
-@app.route('/menu')
-def menu():
-    if session.get('username'):
-        items = []
-        try :
-            conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-            cursor=conn.cursor()
-            cursor.execute('SELECT * FROM plats')
-        except psycopg2.IntegrityError as e:
-            print(e)
+                SELECT * FROM candidats
+                WHERE telephone = %s AND mot_de_passe = %s
+            """, (telephone, mot_de_passe))
+            candidat = cursor.fetchone()
             cursor.close()
-            conn.rollback()
-        else:
-            print('opération réussie')
-        
-        rows=cursor.fetchall()
-        print(rows)
-        for row in rows:
-            print (row)
-            items.append({
-                'id': row[0],
-                'name':row[1],
-                'price': row[2],
-                'description': row[3],
-                'image_url':row[4],
-                'category': row[5],
-                'tags': row[6]
-            })
+            conn.close()
 
-        print (items)
-
-
-
-        return render_template ('menu.html', items=items)
-
-    else:
-        return redirect(url_for('login'))   
-    
-
-@app.route('/add_session', methods=['POST'])
-def add_to_session():
-    item_id= request.form.get('item_id')
-    item_name= request.form.get('item_name')
-    item_img= request.form.get('item_img')
-    item_price= request.form.get('item_price')
-
-    if not item_name and item_img:
-        print("Aucun item reçu")
-        return redirect(url_for('menu'))
-    
-    else:
-        session['plat_id']=item_id
-        session['plat_name']=item_name
-        session['plat_img']=item_img
-        session['plat_price']=item_price
-        print(session)
-        return redirect(url_for('orders'))
-
-
-
-
-@app.route("/orders", methods=['POST','GET'])
-def orders():
-    if session.get('username'):
-
-        if request.method=='POST':
-
-            conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-            cursor=conn.cursor()
-
-
-            def generer_reference(longueur=14):
-                caracteres = string.ascii_uppercase + string.digits
-                return "eden_food_" + ''.join(random.choice(caracteres) for _ in range(longueur))
-
-            def creer_reference_unique(conn, longueur=14):
-                while True:
-                    ref = generer_reference(longueur)
-                    cursor.execute("SELECT 1 FROM commande WHERE plat_id = %s", (ref,))
-                    if cursor.fetchone() is None:
-                        return ref
-            print(creer_reference_unique(conn, longueur=14))
-
-            nom_plat=request.form.get('plat')
-            id_plat=creer_reference_unique(conn, longueur=14)
-            url_plat=request.form.get('plat_image_url')
-            nom_client=request.form.get('nom_client')
-            tel_client=request.form.get('tel')
-            adress_client=request.form.get('adresse')
-            quantite=request.form.get('quantite')
-            accompagnement=request.form.get('accompagnement')
-            note_plat=request.form.get('note')
-            prix_plat=request.form.get('plat_price')
-
-
-            try:
-                cursor.execute("""
-                INSERT INTO commande (
-                    plat_id,
-                    plat_name,
-                    plat_image_url,
-                    nom_client,
-                    tel,
-                    adresse,
-                    quantite,
-                    note,
-                    accompagnement,
-                    statut,
-                    prix
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id, created_at;
-                """, (
-                    id_plat,                                 
-                    nom_plat,                     
-                    url_plat,      
-                    nom_client,                       
-                    tel_client,                     
-                    adress_client,                 
-                    quantite,                                   
-                    note_plat,                    
-                    accompagnement,                            
-                    "En attente de paiement",                        
-                    prix_plat                            
-                ))
-
-                conn.commit()
-                return redirect(url_for('menu'))
-            
-            except psycopg2.IntegrityError as e:
-                print('erreur: ', e)
-                conn.rollback()
+            if candidat:
+                session['candidat_id']  = candidat['id']
+                session['candidat_nom'] = candidat['prenom']
+                flash(f"Bienvenue, {candidat['prenom']} !", 'success')
+                return redirect(url_for('dashboard'))
             else:
-                print('insertion réussie')
-               
+                flash('Numéro de téléphone ou mot de passe incorrect.', 'error')
 
-        else:
+        except Exception as e:
+            flash(f"Erreur : {str(e)}", 'error')
 
+    return render_template('login.html')
 
-            return render_template('commande.html')
+# ================================================================
+#  ROUTE 4 — Déconnexion élève
+# ================================================================
 
-    else:
-        return redirect(url_for('login'))
-
-
-@app.route("/logout")
+@app.route('/logout')
 def logout():
     session.clear()
-    return render_template('connexion.html')
+    flash('Vous avez été déconnecté.', 'info')
+    return redirect(url_for('index'))
 
+# ================================================================
+#  ROUTE 5 — Dashboard élève
+# ================================================================
 
-@app.route("/contact")
-def contact():
-    if session.get('username'):
-    
-        return render_template('contact.html')
-    else:
+@app.route('/dashboard')
+def dashboard():
+    if not session.get('candidat_id'):
+        flash('Veuillez vous connecter.', 'error')
         return redirect(url_for('login'))
 
+    try:
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM candidats WHERE id = %s", (session['candidat_id'],))
+        candidat = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-@app.route("/admin_home", methods=['POST', 'GET'])
-def admin_home():
-    
-    if session.get('username') and session.get('is_admin')==True:
+        if not candidat:
+            session.clear()
+            return redirect(url_for('login'))
 
-        try :
-            conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-            cursor=conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM commande')
-            total = cursor.fetchone()
+        return render_template('dashboard.html', candidat=candidat)
 
-            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En attente de paiement",))
-            en_attente = cursor.fetchone()
+    except Exception as e:
+        flash(f"Erreur : {str(e)}", 'error')
+        return redirect(url_for('login'))
 
-            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("Confirmée",))
-            confirme = cursor.fetchone()
+# ================================================================
+#  ROUTE 6 — Upload documents depuis le dashboard
+# ================================================================
 
-            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En Préparation",))
-            en_preparation = cursor.fetchone()
+@app.route('/upload_documents', methods=['POST'])
+def upload_documents():
+    if not session.get('candidat_id'):
+        flash('Veuillez vous connecter.', 'error')
+        return redirect(url_for('login'))
 
-            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("En Livraison",))
-            en_livraison = cursor.fetchone()
+    candidat_id = session['candidat_id']
 
-            cursor.execute('SELECT COUNT(*) FROM commande WHERE statut=%s', ("Livrée",))
-            livre = cursor.fetchone()
+    # Récupérer les infos actuelles du candidat
+    conn   = get_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT telephone, acte_naissance, bulletin FROM candidats WHERE id = %s", (candidat_id,))
+    candidat = cursor.fetchone()
+    cursor.close()
+    conn.close()
 
-            cursor.execute('SELECT SUM(prix) FROM commande')
-            chiffre = cursor.fetchone()
+    telephone     = candidat['telephone']
+    acte_file     = request.files.get('acte_naissance')
+    bulletin_file = request.files.get('bulletin')
 
-        except psycopg2.IntegrityError as e:
-            print(e)
-            cursor.close()
-            conn.rollback()
+    acte_filename     = save_file(acte_file,     f"acte_{telephone}")
+    bulletin_filename = save_file(bulletin_file, f"bulletin_{telephone}")
+
+    # Construire la liste des champs à mettre à jour
+    updates = []
+    values  = []
+
+    if acte_filename:
+        updates.append("acte_naissance = %s")
+        values.append(acte_filename)
+
+    if bulletin_filename:
+        updates.append("bulletin = %s")
+        values.append(bulletin_filename)
+
+    if not updates:
+        flash('Aucun fichier valide soumis. Formats acceptes : PDF, JPG, PNG.', 'error')
+        return redirect(url_for('dashboard'))
+
+    try:
+        # Déterminer l'état final des deux documents après cet upload
+        acte_final     = acte_filename     or candidat['acte_naissance']
+        bulletin_final = bulletin_filename or candidat['bulletin']
+
+        # Récupérer le statut paiement actuel
+        conn2   = get_db()
+        cur2    = conn2.cursor(dictionary=True)
+        cur2.execute("SELECT paiement FROM candidats WHERE id = %s", (candidat_id,))
+        paiement_actuel = cur2.fetchone()['paiement']
+        cur2.close()
+        conn2.close()
+
+        # Les deux docs présents ET paiement effectué → en attente
+        dossier_complet = acte_final and bulletin_final and paiement_actuel == 'payé'
+
+        if dossier_complet:
+            updates.append("statut = %s")
+            values.append('en attente')
+
+        values.append(candidat_id)
+        conn   = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            f"UPDATE candidats SET {', '.join(updates)} WHERE id = %s",
+            tuple(values)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        if dossier_complet:
+            flash('Dossier complet ! Votre candidature est maintenant en attente de validation.', 'success')
+        elif acte_final and bulletin_final and paiement_actuel != 'payé':
+            flash('Documents reçus. Il vous reste à effectuer le paiement pour finaliser votre dossier.', 'info')
         else:
-            print('opération réussie')
-        
-        
-        stats={}
-        stats['total']=total[0]
-        stats['en_attente']=en_attente[0]
-        stats['confirmees']=confirme[0]
-        stats['en_preparation']=en_preparation[0]
-        stats['en_livraison']=en_livraison[0]
-        stats['livrees']=livre[0]
-        stats['revenu_total']=chiffre[0]
-        print(stats)
+            flash('Document(s) soumis. Soumettez le document manquant pour completer votre dossier.', 'info')
 
+    except Exception as e:
+        flash(f"Erreur lors de l'upload : {str(e)}", 'error')
 
-        if request.method =='POST':
-            try:
-                if request.form.get('filter'):
-                
-                    order_id=request.form.get('status')
-                    cursor.execute("""
-            SELECT * FROM commande WHERE statut = %s ORDER BY created_at DESC
-            """,(order_id,))
-                
-                elif request.form.get('delete'):
-                    order_id=request.form.get('order_id')
-                    print(request.form.get('order_id'))
-                    print(request.form.get('delete'))
-                    cursor.execute("""
-                                DELETE FROM commande WHERE plat_id = %s
-                            """, (order_id,))
-                    
-                    conn.commit()
+    return redirect(url_for('dashboard'))
 
-                    cursor.execute("""
-            SELECT * FROM commande ORDER BY created_at DESC
-            """)
+# ================================================================
+#  ROUTE 7 — Paiement (simulation)
+# ================================================================
 
+@app.route('/paiement', methods=['GET', 'POST'])
+def paiement():
+    if not session.get('candidat_id'):
+        flash('Veuillez vous connecter.', 'error')
+        return redirect(url_for('login'))
 
-                else:
-                    cursor.execute("""
-            SELECT * FROM commande ORDER BY created_at DESC
-            """)
-                
-                conn.commit()
-            except psycopg2.IntegrityError as e:
-                conn.rollback()
-                
-                print(e)
+    conn   = get_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM candidats WHERE id = %s", (session['candidat_id'],))
+    candidat = cursor.fetchone()
+    cursor.close()
+    conn.close()
 
-            else:
-                print("opération réussie!")
+    if candidat['paiement'] == 'payé':
+        flash('Votre paiement a déjà été effectué.', 'info')
+        return redirect(url_for('dashboard'))
 
-        else:
-            cursor.execute("""
-            SELECT * FROM commande ORDER BY created_at DESC
-            """)
-
-
-        orders_list=cursor.fetchall()
-        orders = []
-        for order in orders_list:
-                orders.append({
-                    'id': order[1],
-                    'plat_name': order[2],
-                    'client_name': order[4],
-                    'quantite': order[7],
-                    'price': order[11],
-                    'addresse': order[6],
-                    'tel': order[5],
-                    'date': order[12].strftime(" %d-%m-%Y à %Hh %Mmin %Ss"),
-                    'note': order[8],
-                    'accompagnement': order[9],
-                    'status': order[10],
-                    'image_url': order[3],
-                })
-        return render_template('admin.html', stats=stats, orders=orders)
-    
-    else:
-        return redirect(url_for('login'))      
-
-
-        
-        
-
-
-
-@app.route("/orders_filter", methods=['POST', 'GET'])
-def api_filter_orders_status_raw():
-    statut = request.args.get('status')
-    print(statut)
-
-    conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-    cur = conn.cursor()
-
-    if statut:
-        cur.execute("""
-            SELECT plat_id, plat_name, created_at, statut, nom_client, prix
-            FROM commande
-            WHERE statut = %s
-            ORDER BY created_at DESC
-            LIMIT 20
-        """, (statut,))
-    else:
-        cur.execute("""
-            SELECT plat_id, plat_name, created_at, statut, nom_client, prix
-            FROM commande
-            ORDER BY created_at DESC
-            LIMIT 20
-        """)
-
-    rows = cur.fetchall()
-    # date -> iso string
-    for r in rows:
-        
-        print(r[2])
-    cur.close()
-    return jsonify(rows)
-
-
-@app.route("/update_order", methods=['POST','GET'])
-def update_order():
-    if request.method=='POST':
-        order_id=request.form.get('order_id')
-        statut=request.form.get('status')
-        print(order_id, statut)
-
-        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-        cursor=conn.cursor()
+    if request.method == 'POST':
         try:
-            cursor.execute("""
-        UPDATE commande SET statut = %s WHERE plat_id = %s
-        """, ( statut, order_id,))
-            
+            conn   = get_db()
+            cursor = conn.cursor(dictionary=True)
+
+            # Vérifier si les deux documents sont déjà présents
+            cursor.execute("SELECT acte_naissance, bulletin FROM candidats WHERE id = %s", (session['candidat_id'],))
+            docs = cursor.fetchone()
+            dossier_complet = docs['acte_naissance'] and docs['bulletin']
+
+            # Mettre à jour paiement, et statut si dossier complet
+            if dossier_complet:
+                cursor.execute(
+                    "UPDATE candidats SET paiement = 'payé', statut = 'en attente' WHERE id = %s",
+                    (session['candidat_id'],)
+                )
+                flash('Paiement validé ! Votre dossier est complet et en attente de validation.', 'success')
+            else:
+                cursor.execute(
+                    "UPDATE candidats SET paiement = 'payé' WHERE id = %s",
+                    (session['candidat_id'],)
+                )
+                flash('Paiement validé. Soumettez vos documents pour finaliser votre dossier.', 'info')
+
             conn.commit()
-        except psycopg2.IntegrityError as e:
-            conn.rollback()
-            print
-            print(e)
+            cursor.close()
+            conn.close()
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            flash(f"Erreur : {str(e)}", 'error')
 
+    return render_template('paiement.html', candidat=candidat)
+
+# ================================================================
+#  ROUTE 8 — Connexion admin
+# ================================================================
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if session.get('admin'):
+        return redirect(url_for('admin'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin'] = True
+            return redirect(url_for('admin'))
         else:
-            print("opération réussie!")
+            flash('Identifiants incorrects.', 'error')
 
-    else:
-        None
-    return redirect (url_for('admin_home'))
+    return render_template('admin_login.html')
 
+# ================================================================
+#  ROUTE 9 — Panneau admin
+# ================================================================
 
+@app.route('/admin')
+def admin():
+    if not session.get('admin'):
+        return redirect(url_for('admin_login'))
 
-@app.route("/delete_order", methods=['POST','GET'])
-def delete_order():
-    return redirect (url_for('admin_home'))
+    # Récupération des filtres depuis les paramètres GET
+    filtre_statut = request.args.get('statut', '').strip()
+    filtre_classe = request.args.get('classe', '').strip()
 
+    try:
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+        # Construction de la requête avec filtres dynamiques
+        query  = "SELECT * FROM candidats WHERE 1=1"
+        params = []
 
+        if filtre_statut:
+            query += " AND statut = %s"
+            params.append(filtre_statut)
+
+        if filtre_classe:
+            query += " AND classe = %s"
+            params.append(filtre_classe)
+
+        query += " ORDER BY date_inscription DESC"
+        cursor.execute(query, params)
+        candidats = cursor.fetchall()
+
+        # Récupérer toutes les classes distinctes pour le select
+        cursor.execute("SELECT DISTINCT classe FROM candidats ORDER BY classe")
+        classes = [row['classe'] for row in cursor.fetchall()]
+
+        # Totaux pour les stats (toujours sur tous les dossiers)
+        cursor.execute("SELECT COUNT(*) as total FROM candidats")
+        total = cursor.fetchone()['total']
+
+        cursor.execute("SELECT statut, COUNT(*) as nb FROM candidats GROUP BY statut")
+        stats_raw = cursor.fetchall()
+        stats = {row['statut']: row['nb'] for row in stats_raw}
+
+        cursor.execute("SELECT COUNT(*) as nb FROM candidats WHERE paiement = 'payé'")
+        nb_payes = cursor.fetchone()['nb']
+
+        cursor.close()
+        conn.close()
+
+        return render_template('admin.html',
+            candidats     = candidats,
+            classes       = classes,
+            total         = total,
+            stats         = stats,
+            nb_payes      = nb_payes,
+            filtre_statut = filtre_statut,
+            filtre_classe = filtre_classe
+        )
+
+    except Exception as e:
+        flash(f"Erreur : {str(e)}", 'error')
+        return render_template('admin.html',
+            candidats=[], classes=[], total=0,
+            stats={}, nb_payes=0,
+            filtre_statut='', filtre_classe=''
+        )
+
+# ================================================================
+#  ROUTE 10 — Détail dossier (admin)
+# ================================================================
+
+@app.route('/admin/dossier/<int:id>')
+def admin_dossier(id):
+    if not session.get('admin'):
+        return redirect(url_for('admin_login'))
+    try:
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM candidats WHERE id = %s", (id,))
+        c = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if not c:
+            flash('Dossier introuvable.', 'error')
+            return redirect(url_for('admin'))
+        return render_template('admin_dossier.html', c=c)
+    except Exception as e:
+        flash(f"Erreur : {str(e)}", 'error')
+        return redirect(url_for('admin'))
+
+# ================================================================
+#  ROUTE 11 — Valider un candidat
+# ================================================================
+
+@app.route('/valider/<int:id>')
+def valider(id):
+    if not session.get('admin'):
+        return redirect(url_for('admin_login'))
+    try:
+        conn   = get_db()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE candidats SET statut = 'accepté' WHERE id = %s", (id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        flash('Candidature acceptée.', 'success')
+    except Exception as e:
+        flash(f"Erreur : {str(e)}", 'error')
+    return redirect(url_for('admin'))
+
+# ================================================================
+#  ROUTE 11 — Refuser un candidat
+# ================================================================
+
+@app.route('/refuser/<int:id>')
+def refuser(id):
+    if not session.get('admin'):
+        return redirect(url_for('admin_login'))
+    try:
+        conn   = get_db()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE candidats SET statut = 'refusé' WHERE id = %s", (id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        flash('Candidature refusée.', 'info')
+    except Exception as e:
+        flash(f"Erreur : {str(e)}", 'error')
+    return redirect(url_for('admin'))
+
+# ================================================================
+#  ROUTE 11 — Déconnexion admin
+# ================================================================
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin', None)
+    return redirect(url_for('index'))
+
+# ================================================================
+#  LANCEMENT
+# ================================================================
+
+if __name__ == '__main__':
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    app.run(debug=True, port=5000)
