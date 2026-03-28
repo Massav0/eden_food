@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="site-header">
     <nav class="navbar">
         <div class="nav-container">
@@ -18,14 +17,13 @@
                 <i data-lucide="graduation-cap"></i>
                 <div class="logo-text">
                     <span class="logo-name">CEG 1 Epke</span>
-                    <span class="logo-tagline">Inscriptions en ligne</span>
+                    <span class="logo-tagline">Inscriptions 6eme</span>
                 </div>
             </a>
             <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
                 <span></span><span></span><span></span>
             </button>
             <div class="nav-menu" id="nav-menu">
-                <a href="/" class="nav-link">Accueil</a>
                 <a href="/dashboard" class="nav-link">Mon dossier</a>
                 <a href="/logout" class="nav-btn nav-btn-outline">
                     <i data-lucide="log-out"></i> Deconnexion
@@ -35,7 +33,6 @@
     </nav>
 </header>
 
-<!-- FLASH -->
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         <div class="flash-wrapper">
@@ -49,21 +46,45 @@
     {% endif %}
 {% endwith %}
 
-<!-- CONTENU -->
 <main class="dashboard-page">
 
-    <!-- En-tête -->
+    <!-- En-tete -->
     <div class="dashboard-header">
         <div>
             <h1>Bonjour, {{ candidat.prenom }}</h1>
-            <p>Voici l'etat de votre dossier d'inscription</p>
+            <p>N° de table : <strong>{{ candidat.numero_table }}</strong></p>
         </div>
         <a href="/logout" class="btn btn-outline">
             <i data-lucide="log-out"></i> Deconnexion
         </a>
     </div>
 
-    <!-- Statuts rapides -->
+    <!-- Progression visuelle -->
+    <div class="progress-bar-wrap">
+        <div class="progress-steps">
+            <div class="progress-step {{ 'done' if candidat.statut in ['en attente','accepté','refusé','inscrit'] }}">
+                <div class="ps-circle"><i data-lucide="send"></i></div>
+                <span>Dossier soumis</span>
+            </div>
+            <div class="progress-line {{ 'done' if candidat.statut in ['accepté','refusé','inscrit'] }}"></div>
+            <div class="progress-step {{ 'done' if candidat.statut in ['accepté','inscrit'] }} {{ 'refused' if candidat.statut == 'refusé' }}">
+                <div class="ps-circle"><i data-lucide="shield-check"></i></div>
+                <span>Validation</span>
+            </div>
+            <div class="progress-line {{ 'done' if candidat.statut == 'inscrit' and candidat.paiement == 'payé' }}"></div>
+            <div class="progress-step {{ 'done' if candidat.paiement == 'payé' }}">
+                <div class="ps-circle"><i data-lucide="credit-card"></i></div>
+                <span>Paiement</span>
+            </div>
+            <div class="progress-line {{ 'done' if candidat.statut == 'inscrit' }}"></div>
+            <div class="progress-step {{ 'done' if candidat.statut == 'inscrit' }}">
+                <div class="ps-circle"><i data-lucide="circle-check"></i></div>
+                <span>Inscrit</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statuts -->
     <div class="status-grid">
         <div class="status-card">
             <i data-lucide="folder-open"></i>
@@ -72,8 +93,8 @@
                 <span class="badge badge-success"><i data-lucide="check-circle"></i> Accepte</span>
             {% elif candidat.statut == 'refusé' %}
                 <span class="badge badge-danger"><i data-lucide="x-circle"></i> Refuse</span>
-            {% elif candidat.statut == 'dossier incomplet' %}
-                <span class="badge badge-danger"><i data-lucide="x-circle"></i> Dossier imcomplet</span>
+            {% elif candidat.statut == 'inscrit' %}
+                <span class="badge badge-success"><i data-lucide="graduation-cap"></i> Inscrit</span>
             {% else %}
                 <span class="badge badge-warning"><i data-lucide="clock"></i> En attente</span>
             {% endif %}
@@ -89,8 +110,12 @@
         </div>
         <div class="status-card">
             <i data-lucide="book-open"></i>
-            <span class="status-label">Classe demandee</span>
-            <span class="badge badge-info">{{ candidat.classe }}</span>
+            <span class="status-label">Classe</span>
+            {% if candidat.classe_attribuee %}
+                <span class="badge badge-info"><i data-lucide="layers"></i> {{ candidat.classe_attribuee }}</span>
+            {% else %}
+                <span class="badge badge-incomplete"><i data-lucide="clock"></i> Non attribuee</span>
+            {% endif %}
         </div>
     </div>
 
@@ -105,16 +130,24 @@
                 <span class="info-val">{{ candidat.prenom }} {{ candidat.nom }}</span>
             </div>
             <div class="info-item">
+                <span class="info-key">Numero de table</span>
+                <span class="info-val">{{ candidat.numero_table }}</span>
+            </div>
+            <div class="info-item">
                 <span class="info-key">Date de naissance</span>
                 <span class="info-val">{{ candidat.date_naissance }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-key">Lieu de naissance</span>
+                <span class="info-val">{{ candidat.lieu_naissance }}</span>
             </div>
             <div class="info-item">
                 <span class="info-key">Telephone</span>
                 <span class="info-val">{{ candidat.telephone }}</span>
             </div>
             <div class="info-item">
-                <span class="info-key">Classe demandee</span>
-                <span class="info-val">{{ candidat.classe }}</span>
+                <span class="info-key">Sexe</span>
+                <span class="info-val">{{ candidat.sexe }}</span>
             </div>
         </div>
     </div>
@@ -122,129 +155,106 @@
     <!-- Documents -->
     <div class="info-card">
         <h2 class="info-card-title">
-            <i data-lucide="paperclip"></i> Documents du dossier
+            <i data-lucide="paperclip"></i> Documents soumis
         </h2>
-
-        <!-- Formulaire d'upload unique pour les deux documents -->
-        <form action="/upload_documents" method="POST" enctype="multipart/form-data" id="upload-form">
-
-            <div class="docs-grid">
-
-                <!-- Acte de naissance -->
-                <div class="doc-item-full">
-                    <div class="doc-item-header">
-                        <i data-lucide="file-text"></i>
-                        <span class="doc-name">Acte de naissance</span>
-                        {% if candidat.acte_naissance %}
-                            <span class="doc-status ok">
-                                <i data-lucide="check-circle"></i> Soumis
-                            </span>
-                        {% else %}
-                            <span class="doc-status miss">
-                                <i data-lucide="alert-circle"></i> Manquant
-                            </span>
-                        {% endif %}
-                    </div>
-
-                    {% if not candidat.acte_naissance %}
-                    <div class="doc-upload-zone">
-                        <label for="acte_naissance" class="file-upload" id="label-acte">
-                            <i data-lucide="upload"></i>
-                            <span id="acte-label-text">Choisir un fichier</span>
-                            <small>PDF, JPG, PNG</small>
-                        </label>
-                        <input type="file" id="acte_naissance" name="acte_naissance"
-                               accept=".pdf,.jpg,.jpeg,.png" class="file-input">
-                    </div>
+        <div class="docs-grid">
+            <div class="doc-item">
+                <i data-lucide="file-text"></i>
+                <div>
+                    <span class="doc-name">Acte de naissance</span>
+                    {% if candidat.acte_naissance %}
+                        <span class="doc-status ok"><i data-lucide="check"></i> Soumis</span>
+                    {% else %}
+                        <span class="doc-status miss"><i data-lucide="x"></i> Manquant</span>
                     {% endif %}
                 </div>
-
-                <!-- Bulletin scolaire -->
-                <div class="doc-item-full">
-                    <div class="doc-item-header">
-                        <i data-lucide="clipboard-list"></i>
-                        <span class="doc-name">Bulletin scolaire</span>
-                        {% if candidat.bulletin %}
-                            <span class="doc-status ok">
-                                <i data-lucide="check-circle"></i> Soumis
-                            </span>
-                        {% else %}
-                            <span class="doc-status miss">
-                                <i data-lucide="alert-circle"></i> Manquant
-                            </span>
-                        {% endif %}
-                    </div>
-
-                    {% if not candidat.bulletin %}
-                    <div class="doc-upload-zone">
-                        <label for="bulletin" class="file-upload" id="label-bulletin">
-                            <i data-lucide="upload"></i>
-                            <span id="bulletin-label-text">Choisir un fichier</span>
-                            <small>PDF, JPG, PNG</small>
-                        </label>
-                        <input type="file" id="bulletin" name="bulletin"
-                               accept=".pdf,.jpg,.jpeg,.png" class="file-input">
-                    </div>
+            </div>
+            <div class="doc-item">
+                <i data-lucide="award"></i>
+                <div>
+                    <span class="doc-name">Certificat CEP</span>
+                    {% if candidat.certificat_cep %}
+                        <span class="doc-status ok"><i data-lucide="check"></i> Soumis</span>
+                    {% else %}
+                        <span class="doc-status miss"><i data-lucide="x"></i> Manquant</span>
                     {% endif %}
                 </div>
-
             </div>
-
-            <!-- Bouton visible seulement si au moins un doc manque -->
-            {% if not candidat.acte_naissance or not candidat.bulletin %}
-            <div class="doc-submit-row">
-                <button type="submit" class="btn btn-primary">
-                    <i data-lucide="upload-cloud"></i> Soumettre les documents
-                </button>
-                <small>Seuls les fichiers selectionnes seront mis a jour</small>
+            <div class="doc-item">
+                <i data-lucide="user-square"></i>
+                <div>
+                    <span class="doc-name">Photo d'identite</span>
+                    {% if candidat.photo %}
+                        <span class="doc-status ok"><i data-lucide="check"></i> Soumise</span>
+                    {% else %}
+                        <span class="doc-status miss"><i data-lucide="x"></i> Manquante</span>
+                    {% endif %}
+                </div>
             </div>
-            {% endif %}
-
-        </form>
+        </div>
     </div>
 
-    <!-- Paiement -->
-    {% if candidat.paiement != 'payé' %}
+    <!-- Bannière paiement — uniquement si accepté et non payé -->
+    {% if candidat.statut == 'accepté' and candidat.paiement != 'payé' %}
     <div class="payment-banner">
         <div class="payment-banner-text">
             <i data-lucide="credit-card"></i>
             <div>
-                <h3>Frais d'inscription</h3>
-                <p>Finalisez votre inscription en reglant les frais. Montant : <strong>5 000 FCFA</strong></p>
+                <h3>Votre dossier est accepte !</h3>
+                <p>Vous pouvez maintenant regler les frais d'inscription. Montant : <strong>5 000 FCFA</strong></p>
             </div>
         </div>
         <a href="/paiement" class="btn btn-primary btn-lg">
             <i data-lucide="wallet"></i> Payer maintenant
         </a>
     </div>
-    {% else %}
-    <div class="payment-banner payment-done">
-        <div class="payment-banner-text">
-            <i data-lucide="circle-check"></i>
-            <div>
-                <h3>Paiement effectue</h3>
-                <p>Vos frais d'inscription ont bien ete regles. Dossier en cours de traitement.</p>
+    {% endif %}
+
+    <!-- Classe et emploi du temps — si inscrit -->
+    {% if candidat.statut == 'inscrit' %}
+    <div class="info-card info-card-success">
+        <h2 class="info-card-title">
+            <i data-lucide="calendar-check"></i> Votre inscription est finalisee
+        </h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-key">Classe attribuee</span>
+                <span class="info-val info-val-big">{{ candidat.classe_attribuee }}</span>
             </div>
         </div>
+        {% if candidat.emploi_du_temps %}
+        <div class="edt-section">
+            <h3><i data-lucide="calendar"></i> Emploi du temps</h3>
+            <div class="edt-content">{{ candidat.emploi_du_temps }}</div>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
-    <!-- Alerte statut final -->
-    {% if candidat.statut == 'accepté' %}
-    <div class="alert alert-success">
-        <i data-lucide="party-popper"></i>
-        <span>Felicitations ! Votre candidature a ete <strong>acceptee</strong>. Bienvenue au CEG 1 Epke !</span>
-    </div>
-    {% elif candidat.statut == 'refusé' %}
+    <!-- Alertes statut -->
+    {% if candidat.statut == 'refusé' %}
     <div class="alert alert-danger">
         <i data-lucide="info"></i>
-        <span>Nous sommes desoles. Votre candidature n'a pas ete retenue. Contactez l'administration.</span>
+        <span>Votre dossier n'a pas ete retenu. Contactez l'administration pour plus d'informations.</span>
+    </div>
+    {% endif %}
+
+    {% if candidat.statut == 'en attente' %}
+    <div class="alert alert-info">
+        <i data-lucide="clock"></i>
+        <span>Votre dossier est en cours d'examen. Vous serez informe des que l'administration aura pris une decision.</span>
+    </div>
+    {% endif %}
+
+    {% if candidat.statut == 'accepté' and candidat.paiement == 'payé' %}
+    <div class="alert alert-info">
+        <i data-lucide="clock"></i>
+        <span>Paiement recu. L'administration va finaliser votre inscription et vous attribuer une classe.</span>
     </div>
     {% endif %}
 
 </main>
 
-<!-- FOOTER -->
 <footer class="site-footer">
     <div class="footer-container">
         <div class="footer-brand">
@@ -255,17 +265,15 @@
             </div>
         </div>
         <div class="footer-links">
-            <a href="/">Accueil</a>
             <a href="/dashboard">Mon dossier</a>
             <a href="/logout">Deconnexion</a>
         </div>
-        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Plateforme d'inscription numerique</p>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Inscriptions 6eme</p>
     </div>
 </footer>
 
 <script>
     lucide.createIcons();
-
     const btn  = document.getElementById('hamburger');
     const menu = document.getElementById('nav-menu');
     btn.addEventListener('click', () => {
@@ -273,32 +281,6 @@
         btn.classList.toggle('is-open', open);
         btn.setAttribute('aria-expanded', open);
     });
-
-    // Afficher le nom du fichier selectionne
-    const acteInput = document.getElementById('acte_naissance');
-    if (acteInput) {
-        acteInput.addEventListener('change', function () {
-            const label = document.getElementById('acte-label-text');
-            const zone  = document.getElementById('label-acte');
-            if (this.files[0]) {
-                label.textContent = this.files[0].name;
-                zone.classList.add('has-file');
-            }
-        });
-    }
-
-    const bulletinInput = document.getElementById('bulletin');
-    if (bulletinInput) {
-        bulletinInput.addEventListener('change', function () {
-            const label = document.getElementById('bulletin-label-text');
-            const zone  = document.getElementById('label-bulletin');
-            if (this.files[0]) {
-                label.textContent = this.files[0].name;
-                zone.classList.add('has-file');
-            }
-        });
-    }
 </script>
-
 </body>
 </html>

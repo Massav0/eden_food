@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="site-header">
     <nav class="navbar">
         <div class="nav-container">
@@ -18,7 +17,7 @@
                 <i data-lucide="graduation-cap"></i>
                 <div class="logo-text">
                     <span class="logo-name">CEG 1 Epke</span>
-                    <span class="logo-tagline">Inscriptions en ligne</span>
+                    <span class="logo-tagline">Inscriptions 6eme</span>
                 </div>
             </a>
             <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
@@ -26,13 +25,11 @@
             </button>
             <div class="nav-menu" id="nav-menu">
                 <a href="/" class="nav-link">Accueil</a>
-                <a href="/login" class="nav-link">Espace eleve</a>
             </div>
         </div>
     </nav>
 </header>
 
-<!-- FLASH -->
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         <div class="flash-wrapper">
@@ -46,10 +43,8 @@
     {% endif %}
 {% endwith %}
 
-<!-- CONTENU -->
 <main class="auth-page">
     <div class="auth-card">
-
         <div class="auth-header">
             <div class="auth-icon auth-icon-dark">
                 <i data-lucide="shield-check"></i>
@@ -57,7 +52,6 @@
             <h1>Administration</h1>
             <p>Acces reserve au personnel du CEG 1 Epke</p>
         </div>
-
         <form action="/admin/login" method="POST" class="form">
             <div class="form-group">
                 <label for="username">
@@ -77,17 +71,12 @@
                 <i data-lucide="log-in"></i> Acceder au panneau
             </button>
         </form>
-
         <p class="auth-redirect">
-            <a href="/login">
-                <i data-lucide="arrow-left"></i> Retour connexion eleve
-            </a>
+            <a href="/login"><i data-lucide="arrow-left"></i> Retour espace eleve</a>
         </p>
-
     </div>
 </main>
 
-<!-- FOOTER -->
 <footer class="site-footer">
     <div class="footer-container">
         <div class="footer-brand">
@@ -97,12 +86,7 @@
                 <span>College d'Enseignement General</span>
             </div>
         </div>
-        <div class="footer-links">
-            <a href="/">Accueil</a>
-            <a href="/register">Inscription</a>
-            <a href="/login">Connexion</a>
-        </div>
-        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Plateforme d'inscription numerique</p>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke</p>
     </div>
 </footer>
 

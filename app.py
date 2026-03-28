@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 from werkzeug.utils import secure_filename
 import mysql.connector
 import os
@@ -14,9 +14,9 @@ app.secret_key = 'ceg1_epke_secret_2024'
 #  CONFIGURATION
 # ================================================================
 
-DB_HOST     = 'localhost'
+DB_HOST     = '127.0.0.1'
 DB_USER     = 'root'
-DB_PASSWORD = ''            # vide par défaut sur XAMPP
+DB_PASSWORD = ''
 DB_NAME     = 'ceg1_epke'
 
 UPLOAD_FOLDER      = os.path.join('static', 'uploads')
@@ -32,78 +32,191 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # ================================================================
 
 def get_db():
-    """Retourne une connexion MySQL."""
     return mysql.connector.connect(
-        host     = DB_HOST,
-        user     = DB_USER,
-        password = DB_PASSWORD,
-        database = DB_NAME
+        host=DB_HOST, user=DB_USER,
+        password=DB_PASSWORD, database=DB_NAME
     )
 
 def allowed_file(filename):
-    """Vérifie si l'extension est autorisée."""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_file(file, prefix):
-    """Sauvegarde un fichier uploadé et retourne son nom, ou None."""
     if file and file.filename and allowed_file(file.filename):
         filename = secure_filename(f"{prefix}_{file.filename}")
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         return filename
     return None
 
+def login_required(f):
+    """Décorateur — redirige si l'élève n'est pas connecté."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('candidat_id'):
+            flash('Veuillez vous connecter.', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    """Décorateur — redirige si l'admin n'est pas connecté."""
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('admin'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated
+
 # ================================================================
-#  ROUTE 1 — Accueil
+#  ROUTE 1 — Accueil + recherche numéro de table
 # ================================================================
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    if request.method == 'POST':
+        numero = request.form.get('numero_table', '').strip().upper()
+
+        if not numero:
+            flash('Veuillez entrer un numéro de table.', 'error')
+            return render_template('index.html')
+
+        try:
+            conn   = get_db()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT * FROM laureats WHERE numero_table = %s", (numero,)
+            )
+            laureat = cursor.fetchone()
+
+            # Vérifier si déjà inscrit
+            cursor.execute(
+                "SELECT id FROM candidats WHERE numero_table = %s", (numero,)
+            )
+            deja_inscrit = cursor.fetchone()
+            cursor.close()
+            conn.close()
+
+            if laureat:
+                # Stocker en session pour la page vérification
+                session['verification'] = {
+                    'numero_table'  : laureat['numero_table'],
+                    'nom'           : laureat['nom'],
+                    'prenom'        : laureat['prenom'],
+                    'date_naissance': str(laureat['date_naissance']),
+                    'lieu_naissance': laureat['lieu_naissance'],
+                    'sexe'          : laureat['sexe'],
+                    'deja_inscrit'  : bool(deja_inscrit)
+                }
+                return redirect(url_for('verification'))
+            else:
+                flash(f'Le numéro de table "{numero}" n\'est pas classé au CEG 1 Epkè.', 'error')
+
+        except Exception as e:
+            flash(f'Erreur : {str(e)}', 'error')
+
     return render_template('index.html')
 
 # ================================================================
-#  ROUTE 2 — Inscription élève
+#  ROUTE 2 — Page de vérification / résultat
+# ================================================================
+
+@app.route('/verification')
+def verification():
+    laureat = session.get('verification')
+    if not laureat:
+        return redirect(url_for('index'))
+    return render_template('verification.html', laureat=laureat)
+
+# ================================================================
+#  ROUTE 3 — Inscription (pièces + compte)
 # ================================================================
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if request.method == 'POST':
-        nom            = request.form.get('nom', '').strip()
-        prenom         = request.form.get('prenom', '').strip()
-        date_naissance = request.form.get('date_naissance', '').strip()
-        classe         = request.form.get('classe', '').strip()
-        telephone      = request.form.get('telephone', '').strip()
-        mot_de_passe   = request.form.get('mot_de_passe', '').strip()
+    laureat = session.get('verification')
+    if not laureat:
+        flash('Veuillez d\'abord vérifier votre numéro de table.', 'error')
+        return redirect(url_for('index'))
 
-        if not all([nom, prenom, date_naissance, classe, telephone, mot_de_passe]):
-            flash('Tous les champs obligatoires doivent être remplis.', 'error')
-            return render_template('register.html')
+    if laureat.get('deja_inscrit'):
+        flash('Ce numéro de table a déjà un compte. Connectez-vous.', 'info')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        telephone    = request.form.get('telephone', '').strip()
+        mot_de_passe = request.form.get('mot_de_passe', '').strip()
+
+        if not telephone or not mot_de_passe:
+            flash('Tous les champs sont obligatoires.', 'error')
+            return render_template('register.html', laureat=laureat)
+
+        # ── Validation fichiers — tous obligatoires ──
+        acte_file  = request.files.get('acte_naissance')
+        cep_file   = request.files.get('certificat_cep')
+        photo_file = request.files.get('photo')
+
+        erreurs = []
+        if not acte_file or not acte_file.filename:
+            erreurs.append("L'acte de naissance est obligatoire.")
+        elif not allowed_file(acte_file.filename):
+            erreurs.append("L'acte de naissance doit être en PDF, JPG ou PNG.")
+
+        if not cep_file or not cep_file.filename:
+            erreurs.append("Le certificat CEP est obligatoire.")
+        elif not allowed_file(cep_file.filename):
+            erreurs.append("Le certificat CEP doit être en PDF, JPG ou PNG.")
+
+        if not photo_file or not photo_file.filename:
+            erreurs.append("La photo d'identité est obligatoire.")
+        elif not allowed_file(photo_file.filename):
+            erreurs.append("La photo doit être en JPG ou PNG.")
+
+        if erreurs:
+            for e in erreurs:
+                flash(e, 'error')
+            return render_template('register.html', laureat=laureat)
+
+        acte_filename  = save_file(acte_file,  f"acte_{telephone}")
+        cep_filename   = save_file(cep_file,   f"cep_{telephone}")
+        photo_filename = save_file(photo_file, f"photo_{telephone}")
 
         try:
             conn   = get_db()
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO candidats
-                    (nom, prenom, date_naissance, classe, telephone,
-                     mot_de_passe, statut)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (nom, prenom, date_naissance, classe, telephone,
-                  mot_de_passe, 'dossier incomplet'))
+                    (numero_table, nom, prenom, date_naissance, lieu_naissance,
+                     sexe, telephone, mot_de_passe,
+                     acte_naissance, certificat_cep, photo,
+                     statut)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                laureat['numero_table'],
+                laureat['nom'], laureat['prenom'],
+                laureat['date_naissance'], laureat['lieu_naissance'],
+                laureat['sexe'], telephone, mot_de_passe,
+                acte_filename, cep_filename, photo_filename,
+                'en attente'
+            ))
             conn.commit()
             cursor.close()
             conn.close()
-            flash('Inscription réussie ! Vous pouvez maintenant vous connecter.', 'success')
+
+            session.pop('verification', None)
+            flash('Dossier soumis avec succès ! Connectez-vous pour suivre votre inscription.', 'success')
             return redirect(url_for('login'))
 
         except mysql.connector.IntegrityError:
             flash('Ce numéro de téléphone est déjà utilisé.', 'error')
         except Exception as e:
-            flash(f"Erreur : {str(e)}", 'error')
+            flash(f'Erreur : {str(e)}', 'error')
 
-    return render_template('register.html')
+    return render_template('register.html', laureat=laureat)
 
 # ================================================================
-#  ROUTE 3 — Connexion élève
+#  ROUTE 4 — Connexion élève
 # ================================================================
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -133,18 +246,18 @@ def login():
             if candidat:
                 session['candidat_id']  = candidat['id']
                 session['candidat_nom'] = candidat['prenom']
-                flash(f"Bienvenue, {candidat['prenom']} !", 'success')
+                flash(f'Bienvenue, {candidat["prenom"]} !', 'success')
                 return redirect(url_for('dashboard'))
             else:
                 flash('Numéro de téléphone ou mot de passe incorrect.', 'error')
 
         except Exception as e:
-            flash(f"Erreur : {str(e)}", 'error')
+            flash(f'Erreur : {str(e)}', 'error')
 
     return render_template('login.html')
 
 # ================================================================
-#  ROUTE 4 — Déconnexion élève
+#  ROUTE 5 — Déconnexion élève
 # ================================================================
 
 @app.route('/logout')
@@ -154,19 +267,19 @@ def logout():
     return redirect(url_for('index'))
 
 # ================================================================
-#  ROUTE 5 — Dashboard élève
+#  ROUTE 6 — Dashboard élève
 # ================================================================
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
-    if not session.get('candidat_id'):
-        flash('Veuillez vous connecter.', 'error')
-        return redirect(url_for('login'))
-
     try:
         conn   = get_db()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM candidats WHERE id = %s", (session['candidat_id'],))
+        cursor.execute(
+            "SELECT * FROM candidats WHERE id = %s",
+            (session['candidat_id'],)
+        )
         candidat = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -178,111 +291,30 @@ def dashboard():
         return render_template('dashboard.html', candidat=candidat)
 
     except Exception as e:
-        flash(f"Erreur : {str(e)}", 'error')
+        flash(f'Erreur : {str(e)}', 'error')
         return redirect(url_for('login'))
 
 # ================================================================
-#  ROUTE 6 — Upload documents depuis le dashboard
-# ================================================================
-
-@app.route('/upload_documents', methods=['POST'])
-def upload_documents():
-    if not session.get('candidat_id'):
-        flash('Veuillez vous connecter.', 'error')
-        return redirect(url_for('login'))
-
-    candidat_id = session['candidat_id']
-
-    # Récupérer les infos actuelles du candidat
-    conn   = get_db()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT telephone, acte_naissance, bulletin FROM candidats WHERE id = %s", (candidat_id,))
-    candidat = cursor.fetchone()
-    cursor.close()
-    conn.close()
-
-    telephone     = candidat['telephone']
-    acte_file     = request.files.get('acte_naissance')
-    bulletin_file = request.files.get('bulletin')
-
-    acte_filename     = save_file(acte_file,     f"acte_{telephone}")
-    bulletin_filename = save_file(bulletin_file, f"bulletin_{telephone}")
-
-    # Construire la liste des champs à mettre à jour
-    updates = []
-    values  = []
-
-    if acte_filename:
-        updates.append("acte_naissance = %s")
-        values.append(acte_filename)
-
-    if bulletin_filename:
-        updates.append("bulletin = %s")
-        values.append(bulletin_filename)
-
-    if not updates:
-        flash('Aucun fichier valide soumis. Formats acceptes : PDF, JPG, PNG.', 'error')
-        return redirect(url_for('dashboard'))
-
-    try:
-        # Déterminer l'état final des deux documents après cet upload
-        acte_final     = acte_filename     or candidat['acte_naissance']
-        bulletin_final = bulletin_filename or candidat['bulletin']
-
-        # Récupérer le statut paiement actuel
-        conn2   = get_db()
-        cur2    = conn2.cursor(dictionary=True)
-        cur2.execute("SELECT paiement FROM candidats WHERE id = %s", (candidat_id,))
-        paiement_actuel = cur2.fetchone()['paiement']
-        cur2.close()
-        conn2.close()
-
-        # Les deux docs présents ET paiement effectué → en attente
-        dossier_complet = acte_final and bulletin_final and paiement_actuel == 'payé'
-
-        if dossier_complet:
-            updates.append("statut = %s")
-            values.append('en attente')
-
-        values.append(candidat_id)
-        conn   = get_db()
-        cursor = conn.cursor()
-        cursor.execute(
-            f"UPDATE candidats SET {', '.join(updates)} WHERE id = %s",
-            tuple(values)
-        )
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        if dossier_complet:
-            flash('Dossier complet ! Votre candidature est maintenant en attente de validation.', 'success')
-        elif acte_final and bulletin_final and paiement_actuel != 'payé':
-            flash('Documents reçus. Il vous reste à effectuer le paiement pour finaliser votre dossier.', 'info')
-        else:
-            flash('Document(s) soumis. Soumettez le document manquant pour completer votre dossier.', 'info')
-
-    except Exception as e:
-        flash(f"Erreur lors de l'upload : {str(e)}", 'error')
-
-    return redirect(url_for('dashboard'))
-
-# ================================================================
-#  ROUTE 7 — Paiement (simulation)
+#  ROUTE 7 — Paiement (accessible uniquement si accepté)
 # ================================================================
 
 @app.route('/paiement', methods=['GET', 'POST'])
+@login_required
 def paiement():
-    if not session.get('candidat_id'):
-        flash('Veuillez vous connecter.', 'error')
-        return redirect(url_for('login'))
-
     conn   = get_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM candidats WHERE id = %s", (session['candidat_id'],))
+    cursor.execute(
+        "SELECT * FROM candidats WHERE id = %s",
+        (session['candidat_id'],)
+    )
     candidat = cursor.fetchone()
     cursor.close()
     conn.close()
+
+    # Vérifications d'accès
+    if candidat['statut'] != 'accepté':
+        flash('Le paiement n\'est disponible qu\'après acceptation de votre dossier.', 'error')
+        return redirect(url_for('dashboard'))
 
     if candidat['paiement'] == 'payé':
         flash('Votre paiement a déjà été effectué.', 'info')
@@ -291,33 +323,18 @@ def paiement():
     if request.method == 'POST':
         try:
             conn   = get_db()
-            cursor = conn.cursor(dictionary=True)
-
-            # Vérifier si les deux documents sont déjà présents
-            cursor.execute("SELECT acte_naissance, bulletin FROM candidats WHERE id = %s", (session['candidat_id'],))
-            docs = cursor.fetchone()
-            dossier_complet = docs['acte_naissance'] and docs['bulletin']
-
-            # Mettre à jour paiement, et statut si dossier complet
-            if dossier_complet:
-                cursor.execute(
-                    "UPDATE candidats SET paiement = 'payé', statut = 'en attente' WHERE id = %s",
-                    (session['candidat_id'],)
-                )
-                flash('Paiement validé ! Votre dossier est complet et en attente de validation.', 'success')
-            else:
-                cursor.execute(
-                    "UPDATE candidats SET paiement = 'payé' WHERE id = %s",
-                    (session['candidat_id'],)
-                )
-                flash('Paiement validé. Soumettez vos documents pour finaliser votre dossier.', 'info')
-
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE candidats SET paiement = 'payé' WHERE id = %s",
+                (session['candidat_id'],)
+            )
             conn.commit()
             cursor.close()
             conn.close()
+            flash('Paiement effectué ! L\'administration va valider votre inscription.', 'success')
             return redirect(url_for('dashboard'))
         except Exception as e:
-            flash(f"Erreur : {str(e)}", 'error')
+            flash(f'Erreur : {str(e)}', 'error')
 
     return render_template('paiement.html', candidat=candidat)
 
@@ -343,15 +360,12 @@ def admin_login():
     return render_template('admin_login.html')
 
 # ================================================================
-#  ROUTE 9 — Panneau admin
+#  ROUTE 9 — Panneau admin (liste + filtres GET)
 # ================================================================
 
 @app.route('/admin')
+@admin_required
 def admin():
-    if not session.get('admin'):
-        return redirect(url_for('admin_login'))
-
-    # Récupération des filtres depuis les paramètres GET
     filtre_statut = request.args.get('statut', '').strip()
     filtre_classe = request.args.get('classe', '').strip()
 
@@ -359,35 +373,48 @@ def admin():
         conn   = get_db()
         cursor = conn.cursor(dictionary=True)
 
-        # Construction de la requête avec filtres dynamiques
-        query  = "SELECT * FROM candidats WHERE 1=1"
-        params = []
+        # Exclure les dossiers incomplets — l'admin ne les voit jamais
+        statuts_visibles = ['en attente', 'accepté', 'refusé', 'inscrit']
 
-        if filtre_statut:
-            query += " AND statut = %s"
-            params.append(filtre_statut)
+        query  = "SELECT * FROM candidats WHERE statut IN ({})".format(
+            ','.join(['%s'] * len(statuts_visibles))
+        )
+        params = list(statuts_visibles)
+
+        if filtre_statut and filtre_statut in statuts_visibles:
+            query  = "SELECT * FROM candidats WHERE statut = %s"
+            params = [filtre_statut]
 
         if filtre_classe:
-            query += " AND classe = %s"
+            query += " AND classe_attribuee = %s"
             params.append(filtre_classe)
 
         query += " ORDER BY date_inscription DESC"
         cursor.execute(query, params)
         candidats = cursor.fetchall()
 
-        # Récupérer toutes les classes distinctes pour le select
-        cursor.execute("SELECT DISTINCT classe FROM candidats ORDER BY classe")
-        classes = [row['classe'] for row in cursor.fetchall()]
+        # Classes attribuées distinctes pour le filtre
+        cursor.execute(
+            "SELECT DISTINCT classe_attribuee FROM candidats "
+            "WHERE classe_attribuee IS NOT NULL ORDER BY classe_attribuee"
+        )
+        classes = [r['classe_attribuee'] for r in cursor.fetchall()]
 
-        # Totaux pour les stats (toujours sur tous les dossiers)
-        cursor.execute("SELECT COUNT(*) as total FROM candidats")
+        # Stats globales — hors dossiers incomplets
+        cursor.execute(
+            "SELECT COUNT(*) as total FROM candidats WHERE statut != 'dossier incomplet'"
+        )
         total = cursor.fetchone()['total']
 
-        cursor.execute("SELECT statut, COUNT(*) as nb FROM candidats GROUP BY statut")
-        stats_raw = cursor.fetchall()
-        stats = {row['statut']: row['nb'] for row in stats_raw}
+        cursor.execute(
+            "SELECT statut, COUNT(*) as nb FROM candidats "
+            "WHERE statut != 'dossier incomplet' GROUP BY statut"
+        )
+        stats = {r['statut']: r['nb'] for r in cursor.fetchall()}
 
-        cursor.execute("SELECT COUNT(*) as nb FROM candidats WHERE paiement = 'payé'")
+        cursor.execute(
+            "SELECT COUNT(*) as nb FROM candidats WHERE paiement = 'payé'"
+        )
         nb_payes = cursor.fetchone()['nb']
 
         cursor.close()
@@ -404,7 +431,7 @@ def admin():
         )
 
     except Exception as e:
-        flash(f"Erreur : {str(e)}", 'error')
+        flash(f'Erreur : {str(e)}', 'error')
         return render_template('admin.html',
             candidats=[], classes=[], total=0,
             stats={}, nb_payes=0,
@@ -416,9 +443,8 @@ def admin():
 # ================================================================
 
 @app.route('/admin/dossier/<int:id>')
+@admin_required
 def admin_dossier(id):
-    if not session.get('admin'):
-        return redirect(url_for('admin_login'))
     try:
         conn   = get_db()
         cursor = conn.cursor(dictionary=True)
@@ -426,56 +452,226 @@ def admin_dossier(id):
         c = cursor.fetchone()
         cursor.close()
         conn.close()
+
         if not c:
             flash('Dossier introuvable.', 'error')
             return redirect(url_for('admin'))
+
         return render_template('admin_dossier.html', c=c)
+
     except Exception as e:
-        flash(f"Erreur : {str(e)}", 'error')
+        flash(f'Erreur : {str(e)}', 'error')
         return redirect(url_for('admin'))
 
 # ================================================================
-#  ROUTE 11 — Valider un candidat
+#  ROUTE 10 — Visualiser un document (streaming)
+# ================================================================
+
+MIMETYPES = {
+    'pdf' : 'application/pdf',
+    'jpg' : 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png' : 'image/png',
+}
+
+@app.route('/admin/document/<filename>')
+@admin_required
+def admin_document(filename):
+    ext      = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    mimetype = MIMETYPES.get(ext, 'application/octet-stream')
+    folder   = os.path.abspath(UPLOAD_FOLDER)
+    return send_from_directory(folder, filename, mimetype=mimetype)
+
+# ================================================================
+#  ROUTE 11 — Accepter un dossier (statut = en attente requis)
 # ================================================================
 
 @app.route('/valider/<int:id>')
+@admin_required
 def valider(id):
-    if not session.get('admin'):
-        return redirect(url_for('admin_login'))
     try:
         conn   = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE candidats SET statut = 'accepté' WHERE id = %s", (id,))
-        conn.commit()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT statut FROM candidats WHERE id = %s", (id,))
+        c = cursor.fetchone()
+
+        if not c:
+            flash('Dossier introuvable.', 'error')
+        elif c['statut'] != 'en attente':
+            flash('Ce dossier ne peut pas être accepté (statut invalide).', 'error')
+        else:
+            cursor.execute(
+                "UPDATE candidats SET statut = 'accepté' WHERE id = %s", (id,)
+            )
+            conn.commit()
+            flash('Dossier accepté. L\'élève peut maintenant effectuer son paiement.', 'success')
+
         cursor.close()
         conn.close()
-        flash('Candidature acceptée.', 'success')
+
     except Exception as e:
-        flash(f"Erreur : {str(e)}", 'error')
-    return redirect(url_for('admin'))
+        flash(f'Erreur : {str(e)}', 'error')
+
+    return redirect(url_for('admin_dossier', id=id))
 
 # ================================================================
-#  ROUTE 11 — Refuser un candidat
+#  ROUTE 12 — Refuser un dossier (statut = en attente requis)
 # ================================================================
 
 @app.route('/refuser/<int:id>')
+@admin_required
 def refuser(id):
-    if not session.get('admin'):
-        return redirect(url_for('admin_login'))
+    try:
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT statut FROM candidats WHERE id = %s", (id,))
+        c = cursor.fetchone()
+
+        if not c:
+            flash('Dossier introuvable.', 'error')
+        elif c['statut'] != 'en attente':
+            flash('Ce dossier ne peut pas être refusé (statut invalide).', 'error')
+        else:
+            cursor.execute(
+                "UPDATE candidats SET statut = 'refusé' WHERE id = %s", (id,)
+            )
+            conn.commit()
+            flash('Dossier refusé.', 'info')
+
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        flash(f'Erreur : {str(e)}', 'error')
+
+    return redirect(url_for('admin_dossier', id=id))
+
+# ================================================================
+#  ROUTE 13 — Valider paiement + attribuer classe + EDT
+# ================================================================
+
+@app.route('/admin/inscrire/<int:id>', methods=['POST'])
+@admin_required
+def inscrire(id):
+    classe_attribuee = request.form.get('classe_attribuee', '').strip()
+    emploi_du_temps  = request.form.get('emploi_du_temps', '').strip()
+
+    if not classe_attribuee:
+        flash('Veuillez attribuer une classe.', 'error')
+        return redirect(url_for('admin_dossier', id=id))
+
+    try:
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT statut, paiement FROM candidats WHERE id = %s", (id,))
+        c = cursor.fetchone()
+
+        if not c:
+            flash('Dossier introuvable.', 'error')
+        elif c['statut'] != 'accepté':
+            flash('Le dossier doit être accepté avant de valider l\'inscription.', 'error')
+        elif c['paiement'] != 'payé':
+            flash('Le paiement n\'a pas encore été effectué par l\'élève.', 'error')
+        else:
+            cursor.execute("""
+                UPDATE candidats
+                SET statut = 'inscrit',
+                    classe_attribuee = %s,
+                    emploi_du_temps  = %s
+                WHERE id = %s
+            """, (classe_attribuee, emploi_du_temps, id))
+            conn.commit()
+            flash('Inscription finalisée ! Classe et emploi du temps attribués.', 'success')
+
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        flash(f'Erreur : {str(e)}', 'error')
+
+    return redirect(url_for('admin_dossier', id=id))
+
+# ================================================================
+#  ROUTE 14 — Gestion des lauréats (liste)
+# ================================================================
+
+@app.route('/admin/laureats')
+@admin_required
+def admin_laureats():
+    try:
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM laureats ORDER BY numero_table")
+        laureats = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template('admin_laureats.html', laureats=laureats)
+    except Exception as e:
+        flash(f'Erreur : {str(e)}', 'error')
+        return render_template('admin_laureats.html', laureats=[])
+
+# ================================================================
+#  ROUTE 15 — Ajouter un lauréat
+# ================================================================
+
+@app.route('/admin/laureats/ajouter', methods=['POST'])
+@admin_required
+def ajouter_laureat():
+    numero_table   = request.form.get('numero_table', '').strip().upper()
+    nom            = request.form.get('nom', '').strip().upper()
+    prenom         = request.form.get('prenom', '').strip()
+    date_naissance = request.form.get('date_naissance', '').strip()
+    lieu_naissance = request.form.get('lieu_naissance', '').strip()
+    sexe           = request.form.get('sexe', '').strip()
+
+    if not all([numero_table, nom, prenom]):
+        flash('Numéro de table, nom et prénom sont obligatoires.', 'error')
+        return redirect(url_for('admin_laureats'))
+
     try:
         conn   = get_db()
         cursor = conn.cursor()
-        cursor.execute("UPDATE candidats SET statut = 'refusé' WHERE id = %s", (id,))
+        cursor.execute("""
+            INSERT INTO laureats
+                (numero_table, nom, prenom, date_naissance, lieu_naissance, sexe)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (numero_table, nom, prenom,
+              date_naissance or None,
+              lieu_naissance or None,
+              sexe or None))
         conn.commit()
         cursor.close()
         conn.close()
-        flash('Candidature refusée.', 'info')
+        flash(f'Lauréat {prenom} {nom} ({numero_table}) ajouté.', 'success')
+
+    except mysql.connector.IntegrityError:
+        flash(f'Le numéro de table {numero_table} existe déjà.', 'error')
     except Exception as e:
-        flash(f"Erreur : {str(e)}", 'error')
-    return redirect(url_for('admin'))
+        flash(f'Erreur : {str(e)}', 'error')
+
+    return redirect(url_for('admin_laureats'))
 
 # ================================================================
-#  ROUTE 11 — Déconnexion admin
+#  ROUTE 16 — Supprimer un lauréat
+# ================================================================
+
+@app.route('/admin/laureats/supprimer/<int:id>')
+@admin_required
+def supprimer_laureat(id):
+    try:
+        conn   = get_db()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM laureats WHERE id = %s", (id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        flash('Lauréat supprimé.', 'info')
+    except Exception as e:
+        flash(f'Erreur : {str(e)}', 'error')
+    return redirect(url_for('admin_laureats'))
+
+# ================================================================
+#  ROUTE 17 — Déconnexion admin
 # ================================================================
 
 @app.route('/admin/logout')
@@ -489,4 +685,4 @@ def admin_logout():
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='127.0.0.1', port=5000)

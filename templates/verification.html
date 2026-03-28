@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification - CEG 1 Epke</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i data-lucide="graduation-cap"></i>
+                <div class="logo-text">
+                    <span class="logo-name">CEG 1 Epke</span>
+                    <span class="logo-tagline">Inscriptions 6eme</span>
+                </div>
+            </a>
+            <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/" class="nav-link">Accueil</a>
+                <a href="/login" class="nav-btn nav-btn-primary">Mon espace</a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-wrapper">
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <span>{{ message }}</span>
+                    <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<main class="verif-page">
+
+    <a href="/" class="back-link">
+        <i data-lucide="arrow-left"></i> Nouvelle recherche
+    </a>
+
+    <div class="verif-card">
+
+        <!-- En-tete succes -->
+        <div class="verif-header verif-success">
+            <div class="verif-icon">
+                <i data-lucide="circle-check"></i>
+            </div>
+            <div>
+                <h1>Felicitations !</h1>
+                <p>Vous etes classe au <strong>CEG 1 Epke</strong> pour la rentree 2024-2025.</p>
+            </div>
+        </div>
+
+        <!-- Informations de l'eleve -->
+        <div class="verif-infos">
+            <h2><i data-lucide="user-round"></i> Vos informations</h2>
+            <div class="verif-grid">
+                <div class="verif-item">
+                    <span class="info-key">Numero de table</span>
+                    <span class="info-val verif-numero">{{ laureat.numero_table }}</span>
+                </div>
+                <div class="verif-item">
+                    <span class="info-key">Nom</span>
+                    <span class="info-val">{{ laureat.nom }}</span>
+                </div>
+                <div class="verif-item">
+                    <span class="info-key">Prenom(s)</span>
+                    <span class="info-val">{{ laureat.prenom }}</span>
+                </div>
+                <div class="verif-item">
+                    <span class="info-key">Date de naissance</span>
+                    <span class="info-val">{{ laureat.date_naissance }}</span>
+                </div>
+                <div class="verif-item">
+                    <span class="info-key">Lieu de naissance</span>
+                    <span class="info-val">{{ laureat.lieu_naissance }}</span>
+                </div>
+                <div class="verif-item">
+                    <span class="info-key">Sexe</span>
+                    <span class="info-val">{{ laureat.sexe }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pieces requises -->
+        <div class="verif-pieces">
+            <h2><i data-lucide="clipboard-list"></i> Pieces a fournir pour l'inscription</h2>
+            <ul class="pieces-list">
+                <li><i data-lucide="file-text"></i> Acte de naissance (copie)</li>
+                <li><i data-lucide="award"></i> Certificat CEP</li>
+                <li><i data-lucide="user-square"></i> Photo d'identite recente</li>
+            </ul>
+            <p class="pieces-note">
+                <i data-lucide="info"></i>
+                Formats acceptes : PDF, JPG, PNG. Taille max par fichier : 5 Mo.
+            </p>
+        </div>
+
+        <!-- Bouton ou message si deja inscrit -->
+        {% if laureat.deja_inscrit %}
+        <div class="verif-already">
+            <i data-lucide="info"></i>
+            <div>
+                <strong>Vous avez deja un dossier en cours.</strong>
+                <p>Connectez-vous pour suivre l'avancement de votre inscription.</p>
+            </div>
+        </div>
+        <a href="/login" class="btn btn-primary btn-lg btn-full">
+            <i data-lucide="log-in"></i> Me connecter
+        </a>
+        {% else %}
+        <a href="/register" class="btn btn-primary btn-lg btn-full">
+            <i data-lucide="user-round-plus"></i> Commencer mon inscription
+        </a>
+        {% endif %}
+
+    </div>
+
+</main>
+
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-brand">
+            <i data-lucide="graduation-cap" class="footer-logo-icon"></i>
+            <div class="footer-brand-text">
+                <strong>CEG 1 Epke</strong>
+                <span>College d'Enseignement General</span>
+            </div>
+        </div>
+        <div class="footer-links">
+            <a href="/">Accueil</a>
+            <a href="/login">Mon espace</a>
+        </div>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Inscriptions 6eme</p>
+    </div>
+</footer>
+
+<script>
+    lucide.createIcons();
+    const btn  = document.getElementById('hamburger');
+    const menu = document.getElementById('nav-menu');
+    btn.addEventListener('click', () => {
+        const open = menu.classList.toggle('is-open');
+        btn.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', open);
+    });
+</script>
+</body>
+</html>

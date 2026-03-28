@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="site-header">
     <nav class="navbar">
         <div class="nav-container">
@@ -18,7 +17,7 @@
                 <i data-lucide="graduation-cap"></i>
                 <div class="logo-text">
                     <span class="logo-name">CEG 1 Epke</span>
-                    <span class="logo-tagline">Inscriptions en ligne</span>
+                    <span class="logo-tagline">Inscriptions 6eme</span>
                 </div>
             </a>
             <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
@@ -26,14 +25,11 @@
             </button>
             <div class="nav-menu" id="nav-menu">
                 <a href="/" class="nav-link">Accueil</a>
-                <a href="/login" class="nav-link">Se connecter</a>
-                <a href="/register" class="nav-btn nav-btn-primary">S'inscrire</a>
             </div>
         </div>
     </nav>
 </header>
 
-<!-- FLASH -->
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         <div class="flash-wrapper">
@@ -47,51 +43,39 @@
     {% endif %}
 {% endwith %}
 
-<!-- CONTENU -->
 <main class="form-page">
     <div class="form-card">
 
         <div class="form-card-header">
-            <h1><i data-lucide="user-round-plus"></i> Nouvelle inscription</h1>
-            <p>Remplissez tous les champs pour creer votre dossier</p>
+            <h1><i data-lucide="user-round-plus"></i> Dossier d'inscription</h1>
+            <p>{{ laureat.prenom }} {{ laureat.nom }} &mdash; N° table : {{ laureat.numero_table }}</p>
         </div>
 
         <form action="/register" method="POST" enctype="multipart/form-data" class="form">
 
-            <!-- Informations personnelles -->
+            <!-- Recap identite (non modifiable) -->
             <div class="form-section">
                 <h2 class="form-section-title">
-                    <i data-lucide="circle-user"></i> Informations personnelles
+                    <i data-lucide="user-round"></i> Identite (issue du classement CEP)
                 </h2>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="nom">Nom <span class="required">*</span></label>
-                        <input type="text" id="nom" name="nom"
-                               placeholder="Ex : AHOUANNOU" required>
+                        <label>Nom</label>
+                        <input type="text" value="{{ laureat.nom }}" disabled class="input-disabled">
                     </div>
                     <div class="form-group">
-                        <label for="prenom">Prenom(s) <span class="required">*</span></label>
-                        <input type="text" id="prenom" name="prenom"
-                               placeholder="Ex : Jean-Baptiste" required>
+                        <label>Prenom(s)</label>
+                        <input type="text" value="{{ laureat.prenom }}" disabled class="input-disabled">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="date_naissance">Date de naissance <span class="required">*</span></label>
-                        <input type="date" id="date_naissance" name="date_naissance" required>
+                        <label>Date de naissance</label>
+                        <input type="text" value="{{ laureat.date_naissance }}" disabled class="input-disabled">
                     </div>
                     <div class="form-group">
-                        <label for="classe">Classe demandee <span class="required">*</span></label>
-                        <select id="classe" name="classe" required>
-                            <option value="" disabled selected>Choisir une classe</option>
-                            <option value="6eme">6eme</option>
-                            <option value="5eme">5eme</option>
-                            <option value="4eme">4eme</option>
-                            <option value="3eme">3eme</option>
-                            <option value="2nde">2nde</option>
-                            <option value="1ere">1ere</option>
-                            <option value="Terminale">Terminale</option>
-                        </select>
+                        <label>Lieu de naissance</label>
+                        <input type="text" value="{{ laureat.lieu_naissance }}" disabled class="input-disabled">
                     </div>
                 </div>
             </div>
@@ -99,14 +83,14 @@
             <!-- Compte -->
             <div class="form-section">
                 <h2 class="form-section-title">
-                    <i data-lucide="key-round"></i> Compte et connexion
+                    <i data-lucide="key-round"></i> Compte de connexion
                 </h2>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="telephone">Telephone <span class="required">*</span></label>
                         <input type="tel" id="telephone" name="telephone"
                                placeholder="Ex : 97000000" required>
-                        <small>Ce numero servira d'identifiant de connexion</small>
+                        <small>Servira d'identifiant pour vous connecter</small>
                     </div>
                     <div class="form-group">
                         <label for="mot_de_passe">Mot de passe <span class="required">*</span></label>
@@ -116,18 +100,60 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-lg btn-full">
-                <i data-lucide="send"></i> Soumettre mon dossier
-            </button>
-            <p class="auth-redirect">
-                Deja inscrit ? <a href="/login">Se connecter</a>
-            </p>
+            <!-- Pieces justificatives -->
+            <div class="form-section">
+                <h2 class="form-section-title">
+                    <i data-lucide="paperclip"></i> Pieces justificatives
+                </h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Acte de naissance <span class="required">*</span></label>
+                        <label for="acte_naissance" class="file-upload" id="label-acte">
+                            <i data-lucide="file-up"></i>
+                            <span id="acte-txt">Choisir un fichier</span>
+                            <small>PDF, JPG, PNG</small>
+                        </label>
+                        <input type="file" id="acte_naissance" name="acte_naissance"
+                               accept=".pdf,.jpg,.jpeg,.png" class="file-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Certificat CEP <span class="required">*</span></label>
+                        <label for="certificat_cep" class="file-upload" id="label-cep">
+                            <i data-lucide="award"></i>
+                            <span id="cep-txt">Choisir un fichier</span>
+                            <small>PDF, JPG, PNG</small>
+                        </label>
+                        <input type="file" id="certificat_cep" name="certificat_cep"
+                               accept=".pdf,.jpg,.jpeg,.png" class="file-input">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Photo d'identite <span class="required">*</span></label>
+                        <label for="photo" class="file-upload" id="label-photo">
+                            <i data-lucide="user-square"></i>
+                            <span id="photo-txt">Choisir un fichier</span>
+                            <small>JPG, PNG — fond blanc</small>
+                        </label>
+                        <input type="file" id="photo" name="photo"
+                               accept=".jpg,.jpeg,.png" class="file-input">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-submit-zone">
+                <button type="submit" class="btn btn-primary btn-lg btn-full">
+                    <i data-lucide="send"></i> Soumettre mon dossier
+                </button>
+                <p class="auth-redirect">
+                    Deja inscrit ? <a href="/login">Me connecter</a>
+                </p>
+            </div>
 
         </form>
     </div>
 </main>
 
-<!-- FOOTER -->
 <footer class="site-footer">
     <div class="footer-container">
         <div class="footer-brand">
@@ -139,11 +165,9 @@
         </div>
         <div class="footer-links">
             <a href="/">Accueil</a>
-            <a href="/register">Inscription</a>
-            <a href="/login">Connexion</a>
-            <a href="/admin/login">Administration</a>
+            <a href="/login">Mon espace</a>
         </div>
-        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Plateforme d'inscription numerique</p>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Inscriptions 6eme</p>
     </div>
 </footer>
 
@@ -157,14 +181,20 @@
         btn.setAttribute('aria-expanded', open);
     });
 
-    // Afficher le nom du fichier selectionne
-    document.getElementById('acte_naissance').addEventListener('change', function() {
-        document.getElementById('acte-label').textContent =
-            this.files[0] ? this.files[0].name : 'Choisir un fichier';
-    });
-    document.getElementById('bulletin').addEventListener('change', function() {
-        document.getElementById('bulletin-label').textContent =
-            this.files[0] ? this.files[0].name : 'Choisir un fichier';
+    // Afficher nom fichier selectionne
+    [
+        ['acte_naissance', 'acte-txt', 'label-acte'],
+        ['certificat_cep', 'cep-txt',  'label-cep'],
+        ['photo',          'photo-txt','label-photo']
+    ].forEach(([inputId, spanId, labelId]) => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('change', function() {
+                document.getElementById(spanId).textContent =
+                    this.files[0] ? this.files[0].name : 'Choisir un fichier';
+                document.getElementById(labelId).classList.toggle('has-file', !!this.files[0]);
+            });
+        }
     });
 </script>
 </body>

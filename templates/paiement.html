@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="site-header">
     <nav class="navbar">
         <div class="nav-container">
@@ -18,14 +17,13 @@
                 <i data-lucide="graduation-cap"></i>
                 <div class="logo-text">
                     <span class="logo-name">CEG 1 Epke</span>
-                    <span class="logo-tagline">Inscriptions en ligne</span>
+                    <span class="logo-tagline">Inscriptions 6eme</span>
                 </div>
             </a>
             <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
                 <span></span><span></span><span></span>
             </button>
             <div class="nav-menu" id="nav-menu">
-                <a href="/" class="nav-link">Accueil</a>
                 <a href="/dashboard" class="nav-link">Mon dossier</a>
                 <a href="/logout" class="nav-btn nav-btn-outline">
                     <i data-lucide="log-out"></i> Deconnexion
@@ -35,7 +33,6 @@
     </nav>
 </header>
 
-<!-- FLASH -->
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         <div class="flash-wrapper">
@@ -49,16 +46,14 @@
     {% endif %}
 {% endwith %}
 
-<!-- CONTENU -->
 <main class="auth-page">
     <div class="auth-card">
-
         <div class="auth-header">
             <div class="auth-icon">
                 <i data-lucide="wallet"></i>
             </div>
             <h1>Frais d'inscription</h1>
-            <p>Recapitulatif avant validation</p>
+            <p>Votre dossier a ete accepte. Finalisez votre inscription.</p>
         </div>
 
         <div class="payment-summary">
@@ -67,12 +62,12 @@
                 <strong>{{ candidat.prenom }} {{ candidat.nom }}</strong>
             </div>
             <div class="summary-row">
-                <span><i data-lucide="book-open"></i> Classe</span>
-                <strong>{{ candidat.classe }}</strong>
+                <span><i data-lucide="hash"></i> N° de table</span>
+                <strong>{{ candidat.numero_table }}</strong>
             </div>
             <div class="summary-row">
-                <span><i data-lucide="phone"></i> Telephone</span>
-                <strong>{{ candidat.telephone }}</strong>
+                <span><i data-lucide="book-open"></i> Classe</span>
+                <strong>6eme</strong>
             </div>
             <div class="summary-divider"></div>
             <div class="summary-row summary-total">
@@ -83,7 +78,7 @@
 
         <div class="payment-notice">
             <i data-lucide="info"></i>
-            <p>Ceci est une simulation de paiement. Aucune transaction reelle n'est effectuee.</p>
+            <p>Simulation de paiement. Aucune transaction reelle n'est effectuee.</p>
         </div>
 
         <form action="/paiement" method="POST">
@@ -93,13 +88,11 @@
         </form>
 
         <a href="/dashboard" class="btn btn-outline btn-lg btn-full" style="margin-top:.75rem;">
-            <i data-lucide="arrow-left"></i> Retour au tableau de bord
+            <i data-lucide="arrow-left"></i> Retour a mon dossier
         </a>
-
     </div>
 </main>
 
-<!-- FOOTER -->
 <footer class="site-footer">
     <div class="footer-container">
         <div class="footer-brand">
@@ -110,11 +103,10 @@
             </div>
         </div>
         <div class="footer-links">
-            <a href="/">Accueil</a>
             <a href="/dashboard">Mon dossier</a>
             <a href="/logout">Deconnexion</a>
         </div>
-        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Plateforme d'inscription numerique</p>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke &mdash; Inscriptions 6eme</p>
     </div>
 </footer>
 

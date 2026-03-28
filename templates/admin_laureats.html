@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laureats - Admin CEG 1 Epke</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i data-lucide="graduation-cap"></i>
+                <div class="logo-text">
+                    <span class="logo-name">CEG 1 Epke</span>
+                    <span class="logo-tagline">Administration</span>
+                </div>
+            </a>
+            <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <a href="/admin" class="nav-link">Dossiers</a>
+                <a href="/admin/laureats" class="nav-link">Laureats</a>
+                <a href="/admin/logout" class="nav-btn nav-btn-outline">
+                    <i data-lucide="log-out"></i> Deconnexion
+                </a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="flash-wrapper">
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">
+                    <span>{{ message }}</span>
+                    <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<main class="admin-page">
+
+    <div class="admin-header">
+        <div>
+            <h1><i data-lucide="list"></i> Laureats classes au CEG 1 Epke</h1>
+            <p>{{ laureats|length }} laureat(s) enregistre(s)</p>
+        </div>
+        <a href="/admin" class="btn btn-outline">
+            <i data-lucide="arrow-left"></i> Retour aux dossiers
+        </a>
+    </div>
+
+    <!-- Formulaire ajout -->
+    <div class="info-card">
+        <h2 class="info-card-title">
+            <i data-lucide="user-round-plus"></i> Ajouter un laureat
+        </h2>
+        <form action="/admin/laureats/ajouter" method="POST" class="form laureats-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="numero_table">N° de table <span class="required">*</span></label>
+                    <input type="text" id="numero_table" name="numero_table"
+                           placeholder="Ex : SP 4035"
+                           style="text-transform:uppercase"
+                           maxlength="10" required>
+                </div>
+                <div class="form-group">
+                    <label for="nom">Nom <span class="required">*</span></label>
+                    <input type="text" id="nom" name="nom"
+                           placeholder="En majuscules" required>
+                </div>
+                <div class="form-group">
+                    <label for="prenom">Prenom(s) <span class="required">*</span></label>
+                    <input type="text" id="prenom" name="prenom"
+                           placeholder="Ex : Jean-Baptiste" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date_naissance">Date de naissance</label>
+                    <input type="date" id="date_naissance" name="date_naissance">
+                </div>
+                <div class="form-group">
+                    <label for="lieu_naissance">Lieu de naissance</label>
+                    <input type="text" id="lieu_naissance" name="lieu_naissance"
+                           placeholder="Ex : Ekpe">
+                </div>
+                <div class="form-group">
+                    <label for="sexe">Sexe</label>
+                    <select id="sexe" name="sexe">
+                        <option value="">-- Choisir --</option>
+                        <option value="Masculin">Masculin</option>
+                        <option value="Feminin">Feminin</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="plus"></i> Ajouter ce laureat
+            </button>
+        </form>
+    </div>
+
+    <!-- Liste -->
+    {% if laureats %}
+
+    <!-- Tableau desktop -->
+    <div class="table-wrapper">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>N° table</th>
+                    <th>Nom complet</th>
+                    <th>Date naissance</th>
+                    <th>Lieu naissance</th>
+                    <th>Sexe</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in laureats %}
+                <tr>
+                    <td class="td-id">{{ l.numero_table }}</td>
+                    <td class="td-name">
+                        <strong>{{ l.prenom }} {{ l.nom }}</strong>
+                    </td>
+                    <td>{{ l.date_naissance or '—' }}</td>
+                    <td>{{ l.lieu_naissance or '—' }}</td>
+                    <td>{{ l.sexe or '—' }}</td>
+                    <td>
+                        <a href="/admin/laureats/supprimer/{{ l.id }}"
+                           class="btn-action btn-reject"
+                           onclick="return confirm('Supprimer {{ l.prenom }} {{ l.nom }} ({{ l.numero_table }}) ?')">
+                            <i data-lucide="trash-2"></i> Supprimer
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Cartes mobile -->
+    <div class="mobile-cards">
+        {% for l in laureats %}
+        <div class="mobile-card">
+            <div class="mobile-card-header">
+                <div>
+                    <strong>{{ l.prenom }} {{ l.nom }}</strong>
+                    <small>{{ l.lieu_naissance or '' }}</small>
+                </div>
+                <span class="classe-tag">{{ l.numero_table }}</span>
+            </div>
+            <div class="mobile-card-actions">
+                <a href="/admin/laureats/supprimer/{{ l.id }}"
+                   class="btn-action btn-reject"
+                   onclick="return confirm('Supprimer {{ l.prenom }} {{ l.nom }} ?')">
+                    <i data-lucide="trash-2"></i> Supprimer
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <i data-lucide="users"></i>
+        <h3>Aucun laureat enregistre</h3>
+        <p>Ajoutez des laureats via le formulaire ci-dessus.</p>
+    </div>
+    {% endif %}
+
+</main>
+
+<footer class="site-footer">
+    <div class="footer-container">
+        <div class="footer-brand">
+            <i data-lucide="graduation-cap" class="footer-logo-icon"></i>
+            <div class="footer-brand-text">
+                <strong>CEG 1 Epke</strong>
+                <span>College d'Enseignement General</span>
+            </div>
+        </div>
+        <div class="footer-links">
+            <a href="/admin">Dossiers</a>
+            <a href="/admin/laureats">Laureats</a>
+            <a href="/admin/logout">Deconnexion</a>
+        </div>
+        <p class="footer-copy">&copy; 2024 CEG 1 Epke</p>
+    </div>
+</footer>
+
+<script>
+    lucide.createIcons();
+    const btn  = document.getElementById('hamburger');
+    const menu = document.getElementById('nav-menu');
+    btn.addEventListener('click', () => {
+        const open = menu.classList.toggle('is-open');
+        btn.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', open);
+    });
+</script>
+</body>
+</html>
